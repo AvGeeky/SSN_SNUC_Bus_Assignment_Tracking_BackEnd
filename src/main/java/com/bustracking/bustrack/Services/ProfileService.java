@@ -54,7 +54,7 @@ public class ProfileService {
      */
     public ProfileResponse getFullProfileById(UUID profileId) {
         List<ProfileFullFlatRow> flatRows = profileFullMapper.getFullProfileFlat(profileId);
-        System.out.println(flatRows);
+        //System.out.println(flatRows);
 
         if (flatRows == null || flatRows.isEmpty()) {
             return null; // Or throw a custom NotFoundException
