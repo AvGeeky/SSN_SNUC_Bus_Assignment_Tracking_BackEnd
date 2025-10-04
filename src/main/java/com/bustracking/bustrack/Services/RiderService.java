@@ -1,5 +1,6 @@
 package com.bustracking.bustrack.Services;
 
+import com.bustracking.bustrack.dto.BusRouteStopDTO;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.mappings.RiderMapping;
 import com.bustracking.bustrack.entities.Rider;
@@ -19,6 +20,14 @@ public class RiderService {
     public RiderService(RiderMapping riderMapper, StopFinderMapper stopFinderMapper) {
         this.riderMapper = riderMapper;
         this.stopFinderMapper = stopFinderMapper;
+    }
+    public List<BusRouteStopDTO> findFullRouteForRider(UUID riderId) {
+        // Call the new mapper method
+        return stopFinderMapper.getBusRouteForRider(riderId);
+    }
+    public int studentsInUsersBus(UUID riderId) {
+        // Call the new mapper method
+        return stopFinderMapper.countRidersForBusRoute(riderId);
     }
     public Rider getById(UUID id){
         return riderMapper.getbyId(id);
@@ -42,6 +51,7 @@ public class RiderService {
         int rows_affected=riderMapper.update_rider(rider);
         return rows_affected>0;
     }
+
 
     public Rider getByEmail(String email) {
         return riderMapper.findByEmail(email).orElse(null);
