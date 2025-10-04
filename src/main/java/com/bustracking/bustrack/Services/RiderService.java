@@ -1,20 +1,18 @@
 package com.bustracking.bustrack.Services;
 
-import com.bustracking.bustrack.entities.Stop;
 import com.bustracking.bustrack.mappings.RiderMapping;
 import com.bustracking.bustrack.entities.Rider;
 
-import com.bustracking.bustrack.mappings.StopMapping;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class RiderService {
     private final RiderMapping riderMapper;
-
     public RiderService(RiderMapping riderMapper) {
         this.riderMapper = riderMapper;
     }
@@ -39,5 +37,9 @@ public class RiderService {
     public Boolean update_rider(Rider rider){
         int rows_affected=riderMapper.update_rider(rider);
         return rows_affected>0;
+    }
+
+    public Rider getByEmail(String email) {
+        return riderMapper.findByEmail(email).orElse(null);
     }
 }

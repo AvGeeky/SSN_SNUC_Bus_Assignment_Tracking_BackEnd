@@ -1,4 +1,4 @@
-package com.bustracking.bustrack;
+package com.bustracking.bustrack.DBConfig;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -18,6 +18,7 @@ public class Databasetest implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         System.out.println("Testing database connection...");
+//        System.out.println(System.getenv("SUPABASE_DB_URL"));
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(2)) {
                 System.out.println("✅ Successfully connected to the database!");
