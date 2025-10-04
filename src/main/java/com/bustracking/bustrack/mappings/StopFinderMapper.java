@@ -1,7 +1,9 @@
 package com.bustracking.bustrack.mappings;
 
+import com.bustracking.bustrack.dto.BusRouteStopDTO;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -50,4 +52,70 @@ public interface StopFinderMapper {
             AND r.id = #{profileId};
     """)
     List<UserStopFinderDTO> getUserStopDetails(UUID profileId);
+
+    @Select("""
+        
+        WITH RiderBus AS (
+            SELECT
+                ps.profile_bus_id
+            FROM
+                riders r
+            JOIN
+                profile_rider_stops prs ON r.id = prs.rider_id
+            JOIN
+                profiles p ON prs.profile_id = p.id
+            JOIN
+                profile_stops ps ON prs.profile_stop_id = ps.id
+            WHERE
+                p.status = 'active'
+                AND r.id = #{rider_id}
+        )
+        
+        SELECT
+            pb.bus_number,
+            ps.stop_order,
+            s.name AS stop_name,
+            ps.stop_time,
+            s.lat AS stop_latitude,
+            s.lng AS stop_longitude
+        FROM
+            profile_stops ps
+        JOIN
+            stops s ON ps.stop_id = s.id
+        JOIN
+            profile_buses pb ON ps.profile_bus_id = pb.id
+        WHERE
+            ps.profile_bus_id = (SELECT profile_bus_id FROM RiderBus)
+        ORDER BY
+            ps.stop_order ASC;
+    """)
+    List<BusRouteStopDTO> getBusRouteForRider(@Param("rider_id") UUID riderId);
+
+    @Select("""
+        WITH RiderBus AS (
+            SELECT
+                ps.profile_bus_id
+            FROM
+                riders r
+            JOIN
+                profile_rider_stops prs ON r.id = prs.rider_id
+            JOIN
+                profiles p ON prs.profile_id = p.id
+            JOIN
+                profile_stops ps ON prs.profile_stop_id = ps.id
+            WHERE
+                p.status = 'active'
+                AND r.id = #{rider_id}
+        )
+        SELECT
+            COUNT(DISTINCT prs.rider_id)
+        FROM
+            profile_stops ps
+        JOIN
+            profile_rider_stops prs ON ps.id = prs.profile_stop_id
+        WHERE
+            ps.profile_bus_id = (SELECT profile_bus_id FROM RiderBus);
+    """)
+    int countRidersForBusRoute(@Param("rider_id") UUID riderId);
+
 }

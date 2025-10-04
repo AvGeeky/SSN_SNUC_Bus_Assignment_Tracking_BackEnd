@@ -5,6 +5,7 @@ import com.bustracking.bustrack.Services.BusService;
 import com.bustracking.bustrack.Services.ProfileService;
 import com.bustracking.bustrack.Services.RiderService;
 import com.bustracking.bustrack.Services.StopService;
+import com.bustracking.bustrack.dto.BusRouteStopDTO;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
@@ -39,11 +40,15 @@ public class UserController {
     public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@CookieValue("jwt") String jwt){
         String userEmail = jwtUtil.extractEmail(jwt);
        // System.out.println("user email from token: " + userEmail);
-         List<UserStopFinderDTO> stops = riderService.findUserStop(UUID.fromString(requestBody.get("id").toString()));
+         UUID riderId=UUID.fromString(requestBody.get("id").toString());
+         List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
+         List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
          Map<String,Object> response=new HashMap<>();
-         if(stops!=null && stops.stream().allMatch(dto -> userEmail.equals(dto.getRiderEmail()))){
+         if(stops!=null && data.stream().allMatch(dto -> userEmail.equals(dto.getRiderEmail()))){
              response.put("status","S");
-             response.put("data",stops);
+             response.put("data",data);
+             response.put("busStops",stops);
+             response.put("studentsInBus",riderService.studentsInUsersBus(riderId));
              response.put("message","User stop details retrieved successfully");
              return ResponseEntity.ok(response);
          }
@@ -54,6 +59,7 @@ public class UserController {
 
          }
     }
+
 
 
 }
