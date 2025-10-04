@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.bustracking</groupId>
 	<artifactId>bustrack</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.1-Beta</version>
 	<name>BusTrackingSSN</name>
 	<description>Bus tracking app for SSNCE/SNUC with smart student - bus assignments</description>
 	<url/>
@@ -38,7 +38,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.6.0</version>
+			<version>42.7.7</version>
 		</dependency>
 
 		<dependency>
