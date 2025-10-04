@@ -17,7 +17,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminAuthInterceptor)
                 .addPathPatterns("/admin/**");
         registry.addInterceptor(riderAuthInterceptor)
-                .addPathPatterns("/student/**");
+                .addPathPatterns("/user/**");
 
     }
 

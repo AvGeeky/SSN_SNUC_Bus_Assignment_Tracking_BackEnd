@@ -13,4 +13,9 @@ public interface ProfileRiderStopMapping {
     @Select("select * from profile_rider_stops where profile_id=#{profileId}")
     List<Profile_rider_stop> selectProfileRiderStop(@Param("profileId") UUID profileId);
 
+    @Delete("DELETE FROM profile_rider_stops WHERE id=#{id}")
+    int deleteProfileRiderStop(@Param("id") UUID profileRiderStopId);
+
+
+
 }

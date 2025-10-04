@@ -1,8 +1,10 @@
 package com.bustracking.bustrack.Services;
 
+import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.mappings.RiderMapping;
 import com.bustracking.bustrack.entities.Rider;
 
+import com.bustracking.bustrack.mappings.StopFinderMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,8 +15,10 @@ import java.util.UUID;
 @Service
 public class RiderService {
     private final RiderMapping riderMapper;
-    public RiderService(RiderMapping riderMapper) {
+    private final StopFinderMapper stopFinderMapper;
+    public RiderService(RiderMapping riderMapper, StopFinderMapper stopFinderMapper) {
         this.riderMapper = riderMapper;
+        this.stopFinderMapper = stopFinderMapper;
     }
     public Rider getById(UUID id){
         return riderMapper.getbyId(id);
@@ -41,5 +45,9 @@ public class RiderService {
 
     public Rider getByEmail(String email) {
         return riderMapper.findByEmail(email).orElse(null);
+    }
+
+    public List<UserStopFinderDTO> findUserStop(UUID riderId) {
+        return stopFinderMapper.getUserStopDetails(riderId);
     }
 }

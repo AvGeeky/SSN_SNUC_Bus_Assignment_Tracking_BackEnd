@@ -10,4 +10,7 @@ public interface ProfileStopMapping {
 
     @Select("select * from profile_stops where id=#{id}")
     Profile_stop selectProfileStop(@Param("id") UUID id);
+
+    @Delete("DELETE FROM profile_stops WHERE id=#{id}")
+    int deleteProfileStop(@Param("id") UUID profileStopId);
 }
