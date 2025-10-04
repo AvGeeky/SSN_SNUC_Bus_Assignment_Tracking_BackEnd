@@ -69,7 +69,7 @@ public class ProfileService {
             }
             for (AssignmentDto a : busdto.getAssignments()) {
                 UUID profileRiderStopId = UUID.randomUUID();
-                UUID profileStopId = profileStopIds.get(a.getProfileStopIndex()); // validate index
+                UUID profileStopId = profileStopIds.get(a.getProfileStopIndex()-1); // validate index
                 profileRiderStopMapper.insertProfileRiderStop(profileRiderStopId, profileId, a.getRiderId(), profileStopId,Instant.now());
             }
 
@@ -83,7 +83,18 @@ public class ProfileService {
     }
     @Transactional
     public Boolean update_Profile_Status(Profile profile){
+     if(profile.getStatus().equals("active")){
+        int no_actives=profileMapper.countAllActiveProfiles();
+
+       if(no_actives==0){
         int rows_affected=profileMapper.update_Profile_Status(profile);
         return rows_affected>0;
+      }
+      return false;
+    }
+     else{
+         int rows_affected=profileMapper.update_Profile_Status(profile);
+         return rows_affected>0;
+     }
     }
 }

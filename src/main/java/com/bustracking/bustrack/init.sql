@@ -26,6 +26,7 @@ create table riders (
                         home_stop_id uuid references stops(id),
                         college text,
                         email text,
+                        digital_id text,
                         created_at timestamptz default now()
 );
 

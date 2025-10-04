@@ -15,7 +15,7 @@ public interface BusMapping {
     @Insert("insert into buses(id,capacity,created_at,bus_number,brand)values(#{id},#{capacity},#{createdAt},#{busNumber},#{brand})")
     int insert_bus(Bus bus);
 
-    @Update("update buses set capacity=#{capacity} where id=#{id}")
+    @Update("update buses set capacity=#{capacity},bus_number=#{busNumber},brand=#{brand} where id=#{id}")
     int update_bus_capacity(Bus bus);
 
     @Delete("delete from buses where id=#{id}")
