@@ -13,6 +13,8 @@ public interface ProfileMapping {
 
   @Select("select * from profiles")
   List<Profile>  getAll();
+  @Select("select count(*) from profiles where status='active'")
+  int countAllActiveProfiles();
 
   @Insert("insert into profiles(id,name,status,created_at)values(#{id},#{name},#{status},#{createdAt})")
   int insert_Profile(Profile profile);

@@ -359,8 +359,8 @@ public class AdminController {
         }
     }
 
-    @PostMapping("/admin/updateProfile")
-    public ResponseEntity<Map<String,Object>> updateProfile(@RequestBody Map<String,Object> requestBody){
+    @PostMapping("/admin/toggleProfile")
+    public ResponseEntity<Map<String,Object>> toggleProfile(@RequestBody Map<String,Object> requestBody){
         Profile profile=Profile.builder()
                 .name((String)requestBody.get("name"))
                 .id(UUID.fromString(requestBody.get("id").toString()))
