@@ -11,4 +11,7 @@ public interface ProfileBusMapping {
     @Select("select * from profile_buses where profile_id=#{profileId}")
     List<Profile_bus> selectProfileBus(@Param("profileId") UUID profileId);
 
+    @Delete("DELETE FROM profile_buses WHERE id=#{id}")
+    int deleteProfileBus(@Param("id") UUID profileBusId);
+
 }

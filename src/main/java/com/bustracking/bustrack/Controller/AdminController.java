@@ -1,5 +1,7 @@
 package com.bustracking.bustrack.Controller;
+import com.bustracking.bustrack.dto.ProfileFullDto;
 import com.bustracking.bustrack.dto.ProfileRequest;
+import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.entities.Rider;
 import com.bustracking.bustrack.entities.Stop;
 import com.bustracking.bustrack.Services.StopService;
@@ -20,12 +22,14 @@ public class AdminController {
      private final BusService BusService;
     private final RiderService RiderService;
     private final ProfileService ProfileService;
+
      @Autowired
      public AdminController(StopService StopService, BusService busService, RiderService riderService, ProfileService profileService){
          this.StopService=StopService;
          this.BusService = busService;
          this.RiderService = riderService;
          ProfileService = profileService;
+
      }
      @PostMapping("/admin/insertStops")
      public ResponseEntity<Map<String,Object>> createStop(@RequestBody Map<String,Object> requestBody){
@@ -49,7 +53,7 @@ public class AdminController {
              return ResponseEntity.status(503).body(response);
          }
      }
-     @PostMapping("/admin/deleteStops")
+     @DeleteMapping("/admin/deleteStops")
      public ResponseEntity<Map<String,Object>> deleteStop(@RequestBody Map<String,Object> requestBody){
             Boolean done=StopService.delete_stop(UUID.fromString(requestBody.get("id").toString()));
             Map<String,Object> response=new HashMap<>();
@@ -64,6 +68,7 @@ public class AdminController {
                 return ResponseEntity.status(503).body(response);
             }
      }
+
      @GetMapping("/admin/getAllStops")
      public ResponseEntity<Map<String,Object>> getAllStops(){
          List<Stop> stops=StopService.getAll();
@@ -154,7 +159,7 @@ public class AdminController {
 
          }
     }
-    @PostMapping("/admin/deleteBus")
+    @DeleteMapping("/admin/deleteBus")
     public ResponseEntity<Map<String,Object>> deleteBus(@RequestBody Map<String,Object> requestBody){
         Boolean done=BusService.delete_bus(UUID.fromString(requestBody.get("id").toString()));
         Map<String,Object> response=new HashMap<>();
@@ -252,7 +257,7 @@ public class AdminController {
 
         }
     }
-    @PostMapping("/admin/deleteRider")
+    @DeleteMapping("/admin/deleteRider")
     public ResponseEntity<Map<String,Object>> deleteRider(@RequestBody Map<String,Object> requestBody){
         Boolean done=RiderService.delete_rider(UUID.fromString(requestBody.get("id").toString()));
         Map<String,Object> response=new HashMap<>();
@@ -327,23 +332,24 @@ public class AdminController {
         }
     }
     @GetMapping("/admin/getProfileById")
-    public ResponseEntity<Map<String,Object>> getProfileById(@RequestBody Map<String,Object> requestBody){
-        Map<String,Object> result=ProfileService.getById(UUID.fromString(requestBody.get("id").toString()));
-        Map<String,Object> response=new HashMap<>();
-        if(result!=null){
+    public ResponseEntity<Map<String,Object>> getFullProfileById(@RequestBody Map<String,Object> body){
+         String id= (String) body.get("id");
+        ProfileResponse result = ProfileService.getFullProfileById(UUID.fromString(id));
+        System.out.println(result);
+        Map<String,Object> response = new HashMap<>();
+
+        if(result != null){
             response.put("status","S");
             response.put("data",result);
-            response.put("message","profile details retrieved successfully");
+            response.put("message","Full profile details retrieved successfully");
             return ResponseEntity.ok(response);
-        }
-        else{
+        } else {
             response.put("status","E");
-            response.put("message","profile details not retrieved successfully");
+            response.put("message","Profile details not found or failed to retrieve");
             return ResponseEntity.status(503).body(response);
-
         }
     }
-    @PostMapping("/admin/deleteProfile")
+    @DeleteMapping("/admin/deleteProfile")
     public ResponseEntity<Map<String,Object>> deleteProfile(@RequestBody Map<String,Object> requestBody){
         Boolean done=ProfileService.delete_profile(UUID.fromString(requestBody.get("id").toString()));
         Map<String,Object> response=new HashMap<>();
@@ -380,6 +386,116 @@ public class AdminController {
             return ResponseEntity.status(503).body(response);
         }
     }
+//EDIT PROFILE ENDPONITS (INS UPD)
+    @PostMapping("/admin/createProfileBus")
+    public ResponseEntity<Map<String,Object>> createProfileBus(@RequestBody Map<String,Object> requestBody){
+        UUID profile_id = UUID.fromString(requestBody.get("profile_id").toString());
+        UUID bus_id = UUID.fromString(requestBody.get("bus_id").toString());
+        String busNumber=requestBody.get("bus_number").toString();
+        UUID id = ProfileService.createProfileBus(profile_id,bus_id,busNumber);
+        Map<String,Object> response=new HashMap<>();
+        if(id != null){
+            response.put("status","S");
+            response.put("message"," Bus in Profile inserted successfully");
+            response.put("profileBusId",id);
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Bus not inserted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+    @PostMapping("/admin/createProfileStop")
+    public ResponseEntity<Map<String,Object>> createProfileStop(@RequestBody Map<String,Object> requestBody){
+        UUID profileBusId = UUID.fromString(requestBody.get("profile_bus_id").toString());
+        UUID stopId = UUID.fromString(requestBody.get("stop_id").toString());
+        int stopOrder = Integer.parseInt(requestBody.get("stop_order").toString());
+        String stopTime = requestBody.get("stop_time").toString();
+        UUID profileStopId = ProfileService.createProfileStop(profileBusId, stopId, stopOrder, stopTime);
+        Map<String,Object> response = new HashMap<>();
+        if(profileStopId != null){
+            response.put("status","S");
+            response.put("message","Profile stop inserted successfully");
+            response.put("profileStopId", profileStopId);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status","E");
+            response.put("message","Profile stop not inserted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+    @PostMapping("/admin/createProfileRiderStop")
+    public ResponseEntity<Map<String,Object>> createProfileRiderStop(@RequestBody Map<String,Object> requestBody){
+        UUID profileId = UUID.fromString(requestBody.get("profile_id").toString());
+        UUID riderId = UUID.fromString(requestBody.get("rider_id").toString());
+        UUID profileStopId = UUID.fromString(requestBody.get("profile_stop_id").toString());
+        UUID profileRiderStopId = ProfileService.createProfileRiderStop(profileId, riderId, profileStopId);
+        Map<String,Object> response = new HashMap<>();
+        if(profileRiderStopId != null){
+            response.put("status","S");
+            response.put("message","Profile rider stop inserted successfully");
+            response.put("profileRiderStopId", profileRiderStopId);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status","E");
+            response.put("message","Profile rider stop not inserted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+
+    @DeleteMapping("/admin/deleteProfileBus")
+    public ResponseEntity<Map<String,Object>> deleteProfileBus(@RequestBody Map<String,Object> requestBody){
+        UUID profileBusId = UUID.fromString(requestBody.get("profile_bus_id").toString());
+        boolean done = ProfileService.deleteProfileBus(profileBusId);
+        Map<String,Object> response = new HashMap<>();
+        if(done){
+            response.put("status","S");
+            response.put("message","Profile bus, stops and user mappings recursively deleted successfully");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status","E");
+            response.put("message","Profile bus not deleted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+    @DeleteMapping("/admin/deleteProfileStop")
+    public ResponseEntity<Map<String,Object>> deleteProfileStop(@RequestBody Map<String,Object> requestBody){
+        UUID profileStopId = UUID.fromString(requestBody.get("profile_stop_id").toString());
+        boolean done = ProfileService.deleteProfileStop(profileStopId);
+        Map<String,Object> response = new HashMap<>();
+        if(done){
+            response.put("status","S");
+            response.put("message","Profile stop and user mappings recursively deleted successfully");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status","E");
+            response.put("message","Profile stop not deleted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+    @DeleteMapping("/admin/deleteProfileRiderStop")
+    public ResponseEntity<Map<String,Object>> deleteProfileRiderStop(@RequestBody Map<String,Object> requestBody){
+        UUID profileRiderStopId = UUID.fromString(requestBody.get("profile_rider_stop_id").toString());
+        boolean done = ProfileService.deleteProfileRiderStop(profileRiderStopId);
+        Map<String,Object> response = new HashMap<>();
+        if(done){
+            response.put("status","S");
+            response.put("message","User (profile rider stop) mapping deleted successfully");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status","E");
+            response.put("message","Profile rider stop not deleted successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+
 
 
 
