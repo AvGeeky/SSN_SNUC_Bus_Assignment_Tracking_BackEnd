@@ -335,7 +335,7 @@ public class AdminController {
     public ResponseEntity<Map<String,Object>> getFullProfileById(@RequestBody Map<String,Object> body){
          String id= (String) body.get("id");
         ProfileResponse result = ProfileService.getFullProfileById(UUID.fromString(id));
-        System.out.println(result);
+        //System.out.println(result);
         Map<String,Object> response = new HashMap<>();
 
         if(result != null){
