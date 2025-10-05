@@ -16,4 +16,7 @@ public class UserStopFinderDTO {
     private String stopTime;
     private double stopLatitude;
     private double stopLongitude;
+    private String busBrand;
+    private int busMaxCapacity;
+    private String busPlateNumber;
 }

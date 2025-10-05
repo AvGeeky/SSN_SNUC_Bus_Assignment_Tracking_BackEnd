@@ -27,7 +27,11 @@ public interface StopFinderMapper {
             ps.stop_order,
             ps.stop_time,
             s.lat as stop_latitude,
-            s.lng as stop_longitude
+            s.lng as stop_longitude,
+            --  bus details
+            bus.brand as bus_brand,
+            bus.capacity as bus_max_capacity,
+            bus.bus_number as bus_plate_number
         FROM
             riders r
             -- Join to find the rider's assignment in any profile
@@ -45,6 +49,8 @@ public interface StopFinderMapper {
             -- Join to profile_buses to find out which bus this stop belongs to
         JOIN
             profile_buses pb ON ps.profile_bus_id = pb.id
+        JOIN
+            buses bus ON pb.bus_id = bus.id
         WHERE
             -- Filter so we only look at assignments within the 'active' profile
             p.status = 'active'
