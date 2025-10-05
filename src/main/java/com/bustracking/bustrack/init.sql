@@ -52,7 +52,7 @@ create table profile_buses (
                                id uuid primary key default gen_random_uuid(),
                                profile_id uuid references profiles(id) on delete cascade,
                                bus_id uuid references buses(id),
-                               bus_number text not null                     -- column kept but no foreign key
+                               bus_number text not null                     
 );
 
 -- 6. Profile_Stops (ordered stops per bus in a profile)
