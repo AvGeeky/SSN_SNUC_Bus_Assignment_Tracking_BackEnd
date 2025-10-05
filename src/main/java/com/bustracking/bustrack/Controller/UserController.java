@@ -36,7 +36,7 @@ public class UserController {
         this.jwtUtil = jwtUtil;
     }
 
-    @GetMapping("/user/findUserRouteById")
+    @PostMapping("/user/findUserRouteById")
     public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@CookieValue("jwt") String jwt){
         String userEmail = jwtUtil.extractEmail(jwt);
        // System.out.println("user email from token: " + userEmail);

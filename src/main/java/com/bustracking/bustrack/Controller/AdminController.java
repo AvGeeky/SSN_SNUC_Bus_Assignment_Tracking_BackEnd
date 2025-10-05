@@ -85,7 +85,7 @@ public class AdminController {
            return ResponseEntity.status(503).body(response);
         }
      }
-    @GetMapping("/admin/getStopById")
+    @PostMapping("/admin/getStopById")
     public ResponseEntity<Map<String,Object>> getStopById(@RequestBody Map<String,Object> requestBody){
         Stop stop=StopService.getById(UUID.fromString(requestBody.get("id").toString()));
         Map<String,Object> response=new HashMap<>();
@@ -142,7 +142,7 @@ public class AdminController {
           return ResponseEntity.status(503).body(response);
         }
     }
-    @GetMapping("/admin/getBusById")
+    @PostMapping("/admin/getBusById")
     public ResponseEntity<Map<String,Object>> getBusById(@RequestBody Map<String,Object> requestBody){
          Bus bus=BusService.getById(UUID.fromString(requestBody.get("id").toString()));
          Map<String,Object> response=new HashMap<>();
@@ -240,7 +240,7 @@ public class AdminController {
             return ResponseEntity.status(503).body(response);
         }
     }
-    @GetMapping("/admin/getRiderById")
+    @PostMapping("/admin/getRiderById")
     public ResponseEntity<Map<String,Object>> getRiderById(@RequestBody Map<String,Object> requestBody){
         Rider rider=RiderService.getById(UUID.fromString(requestBody.get("id").toString()));
         Map<String,Object> response=new HashMap<>();
@@ -331,7 +331,7 @@ public class AdminController {
             return ResponseEntity.status(503).body(response);
         }
     }
-    @GetMapping("/admin/getProfileById")
+    @PostMapping("/admin/getProfileById")
     public ResponseEntity<Map<String,Object>> getFullProfileById(@RequestBody Map<String,Object> body){
          String id= (String) body.get("id");
         ProfileResponse result = ProfileService.getFullProfileById(UUID.fromString(id));
