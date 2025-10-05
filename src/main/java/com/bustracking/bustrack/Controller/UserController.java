@@ -42,6 +42,7 @@ public class UserController {
        // System.out.println("user email from token: " + userEmail);
          UUID riderId=UUID.fromString(requestBody.get("id").toString());
          List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
+
          List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
          Map<String,Object> response=new HashMap<>();
          if(stops!=null && data.stream().allMatch(dto -> userEmail.equals(dto.getRiderEmail()))){
