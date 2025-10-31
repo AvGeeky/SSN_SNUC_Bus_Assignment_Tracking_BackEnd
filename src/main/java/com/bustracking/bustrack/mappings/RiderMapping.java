@@ -25,4 +25,6 @@ public interface RiderMapping {
 
   @Select("SELECT * FROM riders WHERE email = #{email}")
   Optional<Rider> findByEmail(String email);
+  @Select("SELECT * FROM riders WHERE LOWER(TRIM(digital_id)) = LOWER(TRIM(#{digitalId}))")
+  Rider findByDigitalId(@Param("digitalId") String digitalId);
 }

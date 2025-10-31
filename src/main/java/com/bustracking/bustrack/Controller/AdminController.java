@@ -13,6 +13,7 @@ import com.bustracking.bustrack.entities.Profile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.*;
@@ -297,20 +298,28 @@ public class AdminController {
             return ResponseEntity.status(503).body(response);
         }
     }
-    @PostMapping("/admin/insertProfile")
-    public ResponseEntity<Map<String,Object>> createProfile(@RequestBody ProfileRequest dto){
-        Map<String,Object> resp = new HashMap<>();
+    @PostMapping("/admin/insertProfileFromExcel")
+    public ResponseEntity<Map<String, Object>> createProfileFromExcel(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("profileName") String profileName,
+            @RequestParam("profileStatus") String profileStatus) {
+
+        Map<String, Object> resp = new HashMap<>();
         try {
-            ProfileService.create_full_profile(dto);
-            resp.put("status","S");
-            resp.put("message","profile created");
+            // Call the new service method on the injected bean
+            ProfileService.create_full_profile_from_excel(file, profileName, profileStatus);
+
+            resp.put("status", "S");
+            resp.put("message", "Profile created successfully from Excel file.");
             return ResponseEntity.ok(resp);
-        }
-        catch (Exception e) {
-            resp.put("status","E"); resp.put("message",e);
+        } catch (Exception e) {
+            resp.put("status", "E");
+            // Add the error message for debugging
+            resp.put("message", "Failed to process Excel file: " + e.getMessage());
+            e.printStackTrace(); // Prints the full error to your server console
             return ResponseEntity.status(500).body(resp);
         }
-        }
+    }
 
 
 

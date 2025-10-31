@@ -20,4 +20,6 @@ public interface BusMapping {
 
     @Delete("delete from buses where id=#{id}")
     int delete_bus(UUID id);
+    @Select("SELECT * FROM buses WHERE LOWER(TRIM(bus_number)) = LOWER(TRIM(#{busNumber}))")
+    Bus findByBusNumber(@Param("busNumber") String busNumber);
 }

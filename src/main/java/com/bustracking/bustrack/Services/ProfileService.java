@@ -1,11 +1,20 @@
 package com.bustracking.bustrack.Services;
+
 import com.bustracking.bustrack.dto.*;
 import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.mappings.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.*;
 
@@ -21,8 +30,44 @@ public class ProfileService {
     ProfileStopMapping profileStopMapper;
     @Autowired
     ProfileRiderStopMapping profileRiderStopMapper;
-    @Autowired StopMapping stopMapper;   // existing master mappers
-    @Autowired BusMapping busMapper;
+    @Autowired
+    StopMapping stopMapper;
+    @Autowired
+    BusMapping busMapper;
+
+
+    @Autowired
+    RiderMapping riderMapping;
+
+
+
+    private static final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
+
+    static {
+        ROUTE_TO_BUS_NUMBER_MAP.put("1", "TN19BD8142");
+        ROUTE_TO_BUS_NUMBER_MAP.put("2", "TN11BT2470");
+        ROUTE_TO_BUS_NUMBER_MAP.put("3", "TN19BD8112");
+        ROUTE_TO_BUS_NUMBER_MAP.put("4", "TN19BD9972");
+        ROUTE_TO_BUS_NUMBER_MAP.put("4A", "TN11BT2473");
+        ROUTE_TO_BUS_NUMBER_MAP.put("5", "TN19BD8111");
+        ROUTE_TO_BUS_NUMBER_MAP.put("6", "TN11BS7445");
+        ROUTE_TO_BUS_NUMBER_MAP.put("7", "TN11BT2401");
+        ROUTE_TO_BUS_NUMBER_MAP.put("8", "TN11BS7430");
+        ROUTE_TO_BUS_NUMBER_MAP.put("9", "TN11BS7470");
+        ROUTE_TO_BUS_NUMBER_MAP.put("9A", "TN19BD8125");
+        ROUTE_TO_BUS_NUMBER_MAP.put("9B", "TN19BD9905");
+        ROUTE_TO_BUS_NUMBER_MAP.put("10", "TN11BS7468");
+        ROUTE_TO_BUS_NUMBER_MAP.put("11", "TN11BS7458");
+        ROUTE_TO_BUS_NUMBER_MAP.put("12", "TN19BD8104");
+        ROUTE_TO_BUS_NUMBER_MAP.put("13", "TN11BS7464");
+        ROUTE_TO_BUS_NUMBER_MAP.put("14", "TN19BD8106");
+        ROUTE_TO_BUS_NUMBER_MAP.put("15", "TN11BS7484");
+        ROUTE_TO_BUS_NUMBER_MAP.put("16", "TN19BD9907");
+        ROUTE_TO_BUS_NUMBER_MAP.put("18", "TN19BD9986");
+    }
+
+
+
     public Map<String,Object> getById(UUID id){
         Map<String,Object> result=new HashMap<>();
         Profile profile= profileMapper.getbyId(id);
@@ -133,54 +178,71 @@ public class ProfileService {
     public List<Profile> getAll(){
         return profileMapper.getAll();
     }
+
     @Transactional
     public void create_full_profile(ProfileRequest req){
         UUID profileId = UUID.randomUUID();
-       Profile profile=Profile.builder()
-               .id(profileId)
-               .name((String)req.getProfile().getName())
-               .status((String)req.getProfile().getStatus())
-               .createdAt(Instant.now())
-               .build();
+        Profile profile=Profile.builder()
+                .id(profileId)
+                .name((String)req.getProfile().getName())
+                .status((String)req.getProfile().getStatus())
+                .createdAt(Instant.now())
+                .build();
         profileMapper.insert_Profile(profile);
+
         for(ProfileBusDto busdto: req.getBuses()){
             UUID profileBusId = UUID.randomUUID();
             profileBusMapper.insertProfileBus(profileBusId, profileId,busdto.getBusId(), busdto.getBusNumber());
-            List<UUID> profileStopIds = new ArrayList<>();
+
+            // This map is crucial for linking assignments
+            Map<Integer, UUID> profileStopIdsByOrder = new HashMap<>();
+
             for(ProfileStopDto stopdto:busdto.getStops()){
                 UUID profileStopId = UUID.randomUUID();
                 profileStopMapper.insertProfileStop(profileStopId,profileBusId,stopdto.getStopId(),stopdto.getStopOrder(),stopdto.getStopTime());
-                profileStopIds.add(profileStopId);
+                // Store the generated UUID against its order
+                profileStopIdsByOrder.put(stopdto.getStopOrder(), profileStopId);
             }
+
             for (AssignmentDto a : busdto.getAssignments()) {
                 UUID profileRiderStopId = UUID.randomUUID();
-                UUID profileStopId = profileStopIds.get(a.getProfileStopIndex()-1); // validate index
+
+                // Get the correct profileStopId using the index from the assignment
+                UUID profileStopId = profileStopIdsByOrder.get(a.getProfileStopIndex());
+
+                if (profileStopId == null) {
+                    // This error is important for debugging bad Excel data
+                    throw new RuntimeException("Invalid profileStopIndex: " + a.getProfileStopIndex() + " for bus " + busdto.getBusNumber());
+                }
+
                 profileRiderStopMapper.insertProfileRiderStop(profileRiderStopId, profileId, a.getRiderId(), profileStopId,Instant.now());
             }
 
         }
 
     }
+
     @Transactional
     public Boolean delete_profile(UUID id){
         int rows_affected=profileMapper.delete_Profile(id);
         return rows_affected>0;
     }
+
     @Transactional
     public Boolean update_Profile_Status(Profile profile){
-     if(profile.getStatus().equals("active")){
-        int no_actives=profileMapper.countAllActiveProfiles();
+        if(profile.getStatus().equals("active")){
+            int no_actives=profileMapper.countAllActiveProfiles();
 
-       if(no_actives==0){
-        int rows_affected=profileMapper.update_Profile_Status(profile);
-        return rows_affected>0;
-      }
-      return false;
-    }
-     else{
-         int rows_affected=profileMapper.update_Profile_Status(profile);
-         return rows_affected>0;
-     }
+            if(no_actives==0){
+                int rows_affected=profileMapper.update_Profile_Status(profile);
+                return rows_affected>0;
+            }
+            return false;
+        }
+        else{
+            int rows_affected=profileMapper.update_Profile_Status(profile);
+            return rows_affected>0;
+        }
     }
 
 
@@ -218,6 +280,143 @@ public class ProfileService {
     @Transactional
     public boolean deleteProfileRiderStop(UUID profileRiderStopId) {
         return profileRiderStopMapper.deleteProfileRiderStop(profileRiderStopId) > 0;
+    }
+
+    // -----------------------------------------------------------------
+    // 👇 NEW METHODS FOR EXCEL UPLOAD
+    // -----------------------------------------------------------------
+
+    /**
+     * NEW (FIXED) method to parse the Excel file and build the ProfileRequest DTO.
+     * This version uses the hardcoded map.
+     */
+    public void create_full_profile_from_excel(MultipartFile file, String profileName, String profileStatus) throws Exception {
+
+        ProfileRequest profileRequest = new ProfileRequest();
+
+        ProfileDto profileDto = new ProfileDto();
+        profileDto.setName(profileName);
+        profileDto.setStatus(profileStatus);
+        profileRequest.setProfile(profileDto);
+
+        List<ProfileBusDto> buses = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+
+            // 2. Iterate over each SHEET (each sheet is one BUS)
+            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                Sheet sheet = workbook.getSheetAt(i);
+
+                // The Route Number (e.g., "9A", "43") is the sheet name.
+                String routeNumber = sheet.getSheetName().trim();
+
+                // -----------------------------------------------------------------
+                // NEW LOGIC: Use the map to find the bus license plate
+                // -----------------------------------------------------------------
+                String licensePlate = ROUTE_TO_BUS_NUMBER_MAP.get(routeNumber);
+
+                if (licensePlate == null) {
+                    System.out.println("Warning: Route '" + routeNumber + "' is not in the hardcoded map. Skipping sheet.");
+                    continue; // Skip this sheet
+                }
+
+                // Now find the bus in the database using the license plate
+                // Uses your 'busMapper' variable
+                Bus databaseBus = busMapper.findByBusNumber(licensePlate);
+
+                if (databaseBus == null) {
+                    System.out.println("Warning: Bus with license plate '" + licensePlate + "' (for route " + routeNumber + ") not found in DB. Skipping sheet.");
+                    continue; // Skip this sheet
+                }
+                // -----------------------------------------------------------------
+
+
+                // We found the bus! Now we can build the DTO.
+                ProfileBusDto busDto = new ProfileBusDto();
+                busDto.setBusId(databaseBus.getId()); // <-- This is the Bus UUID
+                busDto.setBusNumber(routeNumber);     // <-- This is the Route No ("9A")
+
+                List<AssignmentDto> assignmentsForThisBus = new ArrayList<>();
+                // Use LinkedHashMap to preserve the insertion order of stops
+                Map<String, ProfileStopDto> uniqueStops = new LinkedHashMap<>();
+                int stopOrderCounter = 1;
+
+                // 3. Iterate over each ROW (each row is a RIDER ASSIGNMENT)
+                // Assuming row 0 is header, data starts at row 1
+                for (int j = 1; j <= sheet.getLastRowNum(); j++) {
+                    Row row = sheet.getRow(j);
+                    // Col 1 = RollNo, Col 5 = Boarding Point (based on your '9A.csv' sample)
+                    if (row == null || row.getCell(1) == null || row.getCell(5) == null) {
+                        continue;
+                    }
+
+                    String rollNo = getCellStringValue(row.getCell(1)).trim();
+                    String boardingPointName = getCellStringValue(row.getCell(5)).trim();
+
+                    if (rollNo.isEmpty() || boardingPointName.isEmpty()) {
+                        continue;
+                    }
+
+                    // --- Find Rider UUID (using digital_id) ---
+                    // Uses your new 'riderMapping' variable
+                    Rider databaseRider = riderMapping.findByDigitalId(rollNo);
+                    if (databaseRider == null) {
+                        System.out.println("Warning: Rider with RollNo(digital_id) '" + rollNo + "' not found. Skipping.");
+                        continue;
+                    }
+
+                    // --- Process the Stop (using name) ---
+                    ProfileStopDto stopDto;
+                    if (!uniqueStops.containsKey(boardingPointName)) {
+                        // Uses your 'stopMapper' variable
+                        Stop databaseStop = stopMapper.findByName(boardingPointName);
+                        if (databaseStop == null) {
+                            System.out.println("Warning: Stop with name '" + boardingPointName + "' not found. Skipping.");
+                            continue;
+                        }
+
+                        stopDto = new ProfileStopDto();
+                        stopDto.setStopId(databaseStop.getId());
+                        stopDto.setStopOrder(stopOrderCounter);
+                        stopDto.setStopTime("00:00"); // Setting default time, as it's not in Excel
+
+                        uniqueStops.put(boardingPointName, stopDto);
+                        stopOrderCounter++;
+                    } else {
+                        stopDto = uniqueStops.get(boardingPointName);
+                    }
+
+                    // 4. Create the Assignment DTO
+                    AssignmentDto assignment = new AssignmentDto();
+                    assignment.setRiderId(databaseRider.getId());
+                    assignment.setProfileStopIndex(stopDto.getStopOrder()); // Link to the stop's order
+
+                    assignmentsForThisBus.add(assignment);
+                }
+
+                busDto.setStops(new ArrayList<>(uniqueStops.values()));
+                busDto.setAssignments(assignmentsForThisBus);
+                buses.add(busDto);
+            }
+        }
+
+        profileRequest.setBuses(buses);
+
+        // 5. Finally, call your existing transactional method
+        this.create_full_profile(profileRequest);
+    }
+
+    /**
+     * Helper method to safely get string values from any cell type
+     * (e.g., handles numeric RollNo as a String).
+     */
+    private String getCellStringValue(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        DataFormatter formatter = new DataFormatter();
+        return formatter.formatCellValue(cell);
     }
 
 }
