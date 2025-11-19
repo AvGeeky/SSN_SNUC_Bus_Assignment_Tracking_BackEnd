@@ -39,6 +39,7 @@ public class UserController {
     @PostMapping("/user/findUserRouteById")
     public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@CookieValue("jwt") String jwt){
         String userEmail = jwtUtil.extractEmail(jwt);
+
        // System.out.println("user email from token: " + userEmail);
          UUID riderId=UUID.fromString(requestBody.get("id").toString());
          List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
