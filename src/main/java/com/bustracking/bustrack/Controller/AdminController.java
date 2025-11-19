@@ -341,7 +341,7 @@ public class AdminController {
         }
     }
     @PostMapping("/admin/getProfileById")
-    public ResponseEntity<Map<String,Object>> getFullProfileById(@RequestBody Map<String,Object> body){
+    public ResponseEntity<Map<String,Object>> getFullProfileFById(@RequestBody Map<String,Object> body){
          String id= (String) body.get("id");
         ProfileResponse result = ProfileService.getFullProfileById(UUID.fromString(id));
         //System.out.println(result);
@@ -371,6 +371,20 @@ public class AdminController {
             response.put("status","E");
             response.put("message","Profile not deleted successfully");
             return ResponseEntity.status(503).body(response);
+        }
+    }
+    @PostMapping("/admin/insertProfile")
+    public ResponseEntity<Map<String,Object>> createProfile(@RequestBody ProfileRequest dto){
+        Map<String,Object> resp = new HashMap<>();
+        try {
+            ProfileService.create_full_profile(dto);
+            resp.put("status","S");
+            resp.put("message","profile created");
+            return ResponseEntity.ok(resp);
+        }
+        catch (Exception e) {
+            resp.put("status","E"); resp.put("message",e);
+            return ResponseEntity.status(500).body(resp);
         }
     }
 
@@ -495,7 +509,7 @@ public class AdminController {
         Map<String,Object> response = new HashMap<>();
         if(done){
             response.put("status","S");
-            response.put("message","User (profile rider stop) mapping deleted successfully");
+            response.put("message","User (profile for rider stop) mapping deleted successfully");
             return ResponseEntity.ok(response);
         } else {
             response.put("status","E");
