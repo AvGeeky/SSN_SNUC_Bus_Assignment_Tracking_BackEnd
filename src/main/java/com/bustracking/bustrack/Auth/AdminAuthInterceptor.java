@@ -21,15 +21,28 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        Cookie jwtCookie = WebUtils.getCookie(request, "jwt");
+//        Cookie jwtCookie = WebUtils.getCookie(request, "jwt");
+//        if (jwtCookie == null) {
+//            log.error("Missing JWT cookie for request to {}", request.getRequestURI());
+//            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing authentication token");
+//            return false;
+//        }
+//
+//        final String jwt = jwtCookie.getValue();
 
-        if (jwtCookie == null) {
-            log.error("Missing JWT cookie for request to {}", request.getRequestURI());
+        final String authHeader = request.getHeader("Authorization");
+        String jwt = null;
+
+        // 2. Validate Header format
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7); // Remove "Bearer " prefix
+        }
+
+        if (jwt == null) {
+            log.error("Missing or invalid Authorization header for request to {}", request.getRequestURI());
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing authentication token");
             return false;
         }
-
-        final String jwt = jwtCookie.getValue();
 
         try {
             Claims claims = jwtUtil.extractAllClaims(jwt);

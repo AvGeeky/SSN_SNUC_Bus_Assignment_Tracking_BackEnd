@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.bustracking</groupId>
 	<artifactId>bustrack</artifactId>
-	<version>1.0-B</version>
+	<version>1.1-B</version>
 	<name>BusTrackingSSN</name>
 	<description>Bus tracking app for SSNCE/SNUC with smart student - bus assignments</description>
 	<url/>

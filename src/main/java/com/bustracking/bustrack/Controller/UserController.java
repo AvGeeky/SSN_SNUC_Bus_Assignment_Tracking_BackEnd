@@ -37,7 +37,16 @@ public class UserController {
     }
 
     @PostMapping("/user/findUserRouteById")
-    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@CookieValue("jwt") String jwt){
+    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@RequestHeader(value = "Authorization", required = false)String authHeader){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "E");
+            errorResponse.put("message", "Invalid Token Format");
+            return ResponseEntity.status(401).body(errorResponse);
+        }
+
+        // Extract the actual token
+        String jwt = authHeader.substring(7);
         String userEmail = jwtUtil.extractEmail(jwt);
 
        // System.out.println("user email from token: " + userEmail);
