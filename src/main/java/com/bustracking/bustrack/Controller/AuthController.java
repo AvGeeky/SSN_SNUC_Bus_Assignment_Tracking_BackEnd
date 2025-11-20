@@ -81,14 +81,15 @@ public class AuthController {
                 }
             }
 
-            // 4. Generate JWT and cookie
+            // 4. Generate JWT
             String jwt = jwtUtil.generateToken(email, claims);
-            ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
-                    .httpOnly(true)
-                    .secure(true) // Set to false if not using HTTPS in development
-                    .path("/")
-                    .maxAge(24 * 60 * 60) // 24 hours
-                    .build();
+//            ResponseCookie cookie = ResponseCookie.from("jwt", jwt)
+//                    .httpOnly(true)
+//                    .secure(true) // Set to false if not using HTTPS in development
+//                    .path("/")
+//                    .maxAge(24 * 60 * 60) // 24 hours
+//                    .build();
+
 
             // 5. Build success response
             response.put("status", "S");
@@ -98,9 +99,9 @@ public class AuthController {
             response.put("picture", decodedToken.getPicture());
             response.put("userDetails", userDetails);
             response.put("role", role);
+            response.put("token", jwt);
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(response);
 
         } catch (Exception e) {
