@@ -3,6 +3,7 @@ package com.bustracking.bustrack.Services;
 import com.bustracking.bustrack.dto.*;
 import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.mappings.*;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.*;
 
+@Slf4j
 @Service
 public class ProfileService {
     @Autowired
@@ -181,6 +183,8 @@ public class ProfileService {
 
     @Transactional
     public void create_full_profile(ProfileRequest req){
+        List<ProfileRiderStopDTO> profileRiderStopDTOs=new ArrayList<>();
+
         UUID profileId = UUID.randomUUID();
         Profile profile=Profile.builder()
                 .id(profileId)
@@ -214,12 +218,19 @@ public class ProfileService {
                     // This error is important for debugging bad Excel data
                     throw new RuntimeException("Invalid profileStopIndex: " + a.getProfileStopIndex() + " for bus " + busdto.getBusNumber());
                 }
-
-                profileRiderStopMapper.insertProfileRiderStop(profileRiderStopId, profileId, a.getRiderId(), profileStopId,Instant.now());
+                profileRiderStopDTOs.add(new ProfileRiderStopDTO(profileRiderStopId, profileId, a.getRiderId(), profileStopId, Instant.now()));
+                //profileRiderStopMapper.insertProfileRiderStop(profileRiderStopId, profileId, a.getRiderId(), profileStopId,Instant.now());
             }
 
         }
+        // Batch insert all assignments at once
+        if (!profileRiderStopDTOs.isEmpty()) {
+            int test = profileRiderStopMapper.insertProfileRiderStops(profileRiderStopDTOs);
 
+            if (test > 0) {
+                log.info("Profile created successfully... Inserted " + test + " rider assignments.");
+            }
+        }
     }
 
     @Transactional
@@ -282,14 +293,8 @@ public class ProfileService {
         return profileRiderStopMapper.deleteProfileRiderStop(profileRiderStopId) > 0;
     }
 
-    // -----------------------------------------------------------------
-    // 👇 NEW METHODS FOR EXCEL UPLOAD
-    // -----------------------------------------------------------------
 
-    /**
-     * NEW (FIXED) method to parse the Excel file and build the ProfileRequest DTO.
-     * This version uses the hardcoded map.
-     */
+    @Transactional(rollbackFor = Exception.class)
     public void create_full_profile_from_excel(MultipartFile file, String profileName, String profileStatus) throws Exception {
 
         ProfileRequest profileRequest = new ProfileRequest();
@@ -298,6 +303,19 @@ public class ProfileService {
         profileDto.setName(profileName);
         profileDto.setStatus(profileStatus);
         profileRequest.setProfile(profileDto);
+
+        // Pre-fetch all riders into a map for quick lookup by digitalId (RollNo)
+        Map<String, Rider> riderMap = new HashMap<>();
+        for (Rider r : riderMapping.findAllRiders()) {
+            if (r.getDigitalId() == null) continue;
+            riderMap.put(r.getDigitalId().toLowerCase().trim(), r);
+        }
+
+        Map<String, Stop> stopMap = new HashMap<>();
+        for (Stop r : stopMapper.findAllStops()) {
+            if (r.getName() == null) continue;
+            stopMap.put(r.getName().toLowerCase().trim(), r);
+        }
 
         List<ProfileBusDto> buses = new ArrayList<>();
 
@@ -317,7 +335,7 @@ public class ProfileService {
                 String licensePlate = ROUTE_TO_BUS_NUMBER_MAP.get(routeNumber);
 
                 if (licensePlate == null) {
-                    System.out.println("Warning: Route '" + routeNumber + "' is not in the hardcoded map. Skipping sheet.");
+                    log.warn("Warning: Route '{}' is not in the hardcoded map. Skipping sheet.", routeNumber);
                     continue; // Skip this sheet
                 }
 
@@ -326,7 +344,7 @@ public class ProfileService {
                 Bus databaseBus = busMapper.findByBusNumber(licensePlate);
 
                 if (databaseBus == null) {
-                    System.out.println("Warning: Bus with license plate '" + licensePlate + "' (for route " + routeNumber + ") not found in DB. Skipping sheet.");
+                    log.warn("Warning: Bus with license plate '{}' (for route {}) not found in DB. Skipping sheet.", licensePlate, routeNumber);
                     continue; // Skip this sheet
                 }
                 // -----------------------------------------------------------------
@@ -358,11 +376,10 @@ public class ProfileService {
                         continue;
                     }
 
-                    // --- Find Rider UUID (using digital_id) ---
-                    // Uses your new 'riderMapping' variable
-                    Rider databaseRider = riderMapping.findByDigitalId(rollNo);
+                    String normalizedRoll = rollNo.toLowerCase().trim();
+                    Rider databaseRider = riderMap.get(normalizedRoll);
                     if (databaseRider == null) {
-                        System.out.println("Warning: Rider with RollNo(digital_id) '" + rollNo + "' not found. Skipping.");
+                        log.warn("Warning: Rider with RollNo(digital_id) '{}' not found. Skipping.", rollNo);
                         continue;
                     }
 
@@ -370,9 +387,10 @@ public class ProfileService {
                     ProfileStopDto stopDto;
                     if (!uniqueStops.containsKey(boardingPointName)) {
                         // Uses your 'stopMapper' variable
-                        Stop databaseStop = stopMapper.findByName(boardingPointName);
+
+                        Stop databaseStop = stopMap.get(boardingPointName.toLowerCase().trim());
                         if (databaseStop == null) {
-                            System.out.println("Warning: Stop with name '" + boardingPointName + "' not found. Skipping.");
+                            log.warn("Warning: Stop with name '{}' not found. Skipping.", boardingPointName);
                             continue;
                         }
 
