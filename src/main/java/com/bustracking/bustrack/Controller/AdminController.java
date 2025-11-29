@@ -532,7 +532,26 @@ public class AdminController {
         }
         else{
             response.put("status","E");
-            response.put("message","Mappings not retireved succesfully");
+            response.put("message","Mappings not retrieved successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+
+    }
+
+    @GetMapping("/admin/getAllRnoVehicleMapping")
+    public ResponseEntity<Map<String,Object>> getrnoVehicleMapping(){
+        List<Vehicle_rno_mapping> mappings=VehicleRnoService.getAll();
+
+        Map<String,Object> response=new HashMap<>();
+        if(mappings!=null){
+            response.put("status","S");
+            response.put("result",mappings);
+            response.put("message","Mapping retrieved successfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Mappings not retrieved successfully");
             return ResponseEntity.status(503).body(response);
         }
 
@@ -547,12 +566,12 @@ public class AdminController {
         Map<String,Object> response=new HashMap<>();
         if(done){
             response.put("status","S");
-            response.put("message","inserted the mapping succesfully");
+            response.put("message","inserted the mapping successfully");
             return ResponseEntity.ok(response);
         }
         else{
             response.put("status","E");
-            response.put("message","not inserted the mapping succesfully");
+            response.put("message","not inserted the mapping successfully");
             return ResponseEntity.status(503).body(response);
         }
 
@@ -569,7 +588,7 @@ public class AdminController {
 
         } else {
             response.put("status", "E");
-            response.put("message", "mapping not deleted succesfully");
+            response.put("message", "mapping not deleted successfully");
             return ResponseEntity.status(503).body(response);
         }
     }
