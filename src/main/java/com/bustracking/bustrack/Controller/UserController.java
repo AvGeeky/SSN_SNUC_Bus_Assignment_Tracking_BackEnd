@@ -36,8 +36,8 @@ public class UserController {
         this.jwtUtil = jwtUtil;
     }
 
-    @PostMapping("/user/findUserRouteById")
-    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestBody Map<String,Object> requestBody,@RequestHeader(value = "Authorization", required = false)String authHeader){
+    @GetMapping("/user/findUserRouteById")
+    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestHeader(value = "Authorization", required = false)String authHeader){
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("status", "E");
@@ -47,10 +47,12 @@ public class UserController {
 
         // Extract the actual token
         String jwt = authHeader.substring(7);
+
         String userEmail = jwtUtil.extractEmail(jwt);
 
        // System.out.println("user email from token: " + userEmail);
-         UUID riderId=UUID.fromString(requestBody.get("id").toString());
+         //UUID riderId=UUID.fromString(requestBody.get("id").toString());
+        UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
          List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
 
          List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);

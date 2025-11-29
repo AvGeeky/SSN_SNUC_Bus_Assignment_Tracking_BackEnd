@@ -22,6 +22,8 @@ public class RiderService {
         this.stopFinderMapper = stopFinderMapper;
     }
     public List<BusRouteStopDTO> findFullRouteForRider(UUID riderId) {
+        //CAN CALL REDIS HERE
+
         // Call the new mapper method
         return stopFinderMapper.getBusRouteForRider(riderId);
     }
