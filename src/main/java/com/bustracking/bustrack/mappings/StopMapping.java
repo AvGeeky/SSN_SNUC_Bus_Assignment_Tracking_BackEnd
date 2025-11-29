@@ -18,7 +18,11 @@ public interface StopMapping {
 
     @Delete("delete from stops where id=#{id}")
     int  delete_stop(@Param("id") UUID id);
+
     @Select("SELECT * FROM stops WHERE LOWER(TRIM(name)) = LOWER(TRIM(#{name}))")
     Stop findByName(@Param("name") String name);
+
+    @Select("SELECT * FROM stops")
+    List<Stop> findAllStops();
 
 }
