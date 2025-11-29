@@ -6,6 +6,7 @@ import com.bustracking.bustrack.entities.Rider;
 import com.bustracking.bustrack.entities.Stop;
 import com.bustracking.bustrack.Services.StopService;
 import com.bustracking.bustrack.entities.Bus;
+import com.bustracking.bustrack.entities.Vehicle_rno_mapping;
 import com.bustracking.bustrack.Services.BusService;
 import com.bustracking.bustrack.Services.RiderService;
 import com.bustracking.bustrack.Services.ProfileService;
@@ -14,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.bustracking.bustrack.Services.VehicleRnoService;
 import java.time.Instant;
 import java.util.*;
 @RestController
@@ -23,14 +24,15 @@ public class AdminController {
      private final BusService BusService;
     private final RiderService RiderService;
     private final ProfileService ProfileService;
-
+    private final VehicleRnoService VehicleRnoService;
      @Autowired
-     public AdminController(StopService StopService, BusService busService, RiderService riderService, ProfileService profileService){
+     public AdminController(StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService){
          this.StopService=StopService;
          this.BusService = busService;
          this.RiderService = riderService;
          ProfileService = profileService;
 
+         VehicleRnoService = vehicleRnoService;
      }
      @PostMapping("/admin/insertStops")
      public ResponseEntity<Map<String,Object>> createStop(@RequestBody Map<String,Object> requestBody){
@@ -517,11 +519,86 @@ public class AdminController {
             return ResponseEntity.status(503).body(response);
         }
     }
+    @PostMapping("/admin/getrnoVehicleMappingById")
+    public ResponseEntity<Map<String,Object>> getvehicleRnoMappingById(@RequestBody Map<String,Object> requestBody){
+        UUID VehicleRnoMapId = UUID.fromString(requestBody.get("vehicle_rno_map_id").toString());
+        Vehicle_rno_mapping mapping=VehicleRnoService.getById(VehicleRnoMapId);
+        Map<String,Object> response=new HashMap<>();
+        if(mapping!=null){
+            response.put("status","S");
+            response.put("result",mapping);
+            response.put("message","Mapping retrieved successfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Mappings not retireved succesfully");
+            return ResponseEntity.status(503).body(response);
+        }
+
+    }
+    @PostMapping("/admin/insertVehicleRnoMapping")
+    public ResponseEntity<Map<String,Object>> insertVehicleRnoMapping(@RequestBody Map<String,Object> requestBody){
+        Vehicle_rno_mapping mapping=Vehicle_rno_mapping.builder()
+                .routeNo((String)requestBody.get("route_no"))
+                .vehicleNo((String)requestBody.get("vehicle_no"))
+                .build();
+        boolean done=VehicleRnoService.create_vehicle_rno_mapping(mapping);
+        Map<String,Object> response=new HashMap<>();
+        if(done){
+            response.put("status","S");
+            response.put("message","inserted the mapping succesfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","not inserted the mapping succesfully");
+            return ResponseEntity.status(503).body(response);
+        }
+
+    }
+    @DeleteMapping("/admin/deleteVehicleRnoMapping")
+    public ResponseEntity<Map<String,Object>> deleteVehicleRnoMapping(@RequestBody Map<String,Object> requestBody) {
+        UUID VehicleRnoMapId = UUID.fromString(requestBody.get("vehicle_rno_map_id").toString());
+        boolean done = VehicleRnoService.delete_vehicle_rno_mapping(VehicleRnoMapId);
+        Map<String, Object> response = new HashMap<>();
+        if (done) {
+            response.put("status", "S");
+            response.put("message", "mapping deleted successfully");
+            return ResponseEntity.ok(response);
+
+        } else {
+            response.put("status", "E");
+            response.put("message", "mapping not deleted succesfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+        @PostMapping("/admin/updateVehicleRnoMapping")
+        public ResponseEntity<Map<String,Object>> updateVehicleRnoMapping(@RequestBody Map<String,Object> requestBody){
+            Vehicle_rno_mapping mapping=Vehicle_rno_mapping.builder()
+                    .id(UUID.fromString(requestBody.get("id").toString()))
+                    .routeNo((String)requestBody.get("route_no"))
+                    .vehicleNo((String)requestBody.get("vehicle_rno"))
+                    .build();
+            Boolean done =VehicleRnoService.update_vehicle_rno_mappings(mapping);
+            Map<String,Object> response=new HashMap<>();
+            if(done){
+                response.put("status", "S");
+                response.put("message", "mapping updated successfully");
+                return ResponseEntity.ok(response);
+            }
+            else{
+                response.put("status", "E");
+                response.put("message", "mapping not  updated successfully");
+                return ResponseEntity.status(503).body(response);
+            }
+
+        }
+
+     }
 
 
 
 
 
 
-
-}

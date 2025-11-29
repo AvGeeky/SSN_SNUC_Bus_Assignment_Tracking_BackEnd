@@ -3,6 +3,7 @@ package com.bustracking.bustrack.Services;
 import com.bustracking.bustrack.dto.*;
 import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.mappings.*;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -36,13 +37,14 @@ public class ProfileService {
     StopMapping stopMapper;
     @Autowired
     BusMapping busMapper;
-
+    @Autowired
+     VehicleRnoMapping vehiclernoMapper;
 
     @Autowired
     RiderMapping riderMapping;
 
 
-
+    /*
     private static final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
 
     static {
@@ -63,11 +65,20 @@ public class ProfileService {
         ROUTE_TO_BUS_NUMBER_MAP.put("12", "TN19BD8104");
         ROUTE_TO_BUS_NUMBER_MAP.put("13", "TN11BS7464");
         ROUTE_TO_BUS_NUMBER_MAP.put("14", "TN19BD8106");
-        ROUTE_TO_BUS_NUMBER_MAP.put("15", "TN11BS7484");
+        ROUTE_TO_BUS_NUMBER_MAP.put("24", "TN11BS7484");
         ROUTE_TO_BUS_NUMBER_MAP.put("16", "TN19BD9907");
         ROUTE_TO_BUS_NUMBER_MAP.put("18", "TN19BD9986");
     }
 
+     */
+    private final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
+    @PostConstruct
+    private void initMap() {
+        List<Vehicle_rno_mapping> list = vehiclernoMapper.getAll();
+        for (Vehicle_rno_mapping item : list) {
+            ROUTE_TO_BUS_NUMBER_MAP.put(item.getRouteNo(), item.getVehicleNo());
+        }
+    }
 
 
     public Map<String,Object> getById(UUID id){
