@@ -6,6 +6,9 @@ import com.bustracking.bustrack.mappings.RiderMapping;
 import com.bustracking.bustrack.entities.Rider;
 
 import com.bustracking.bustrack.mappings.StopFinderMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,18 +20,22 @@ import java.util.UUID;
 public class RiderService {
     private final RiderMapping riderMapper;
     private final StopFinderMapper stopFinderMapper;
-    public RiderService(RiderMapping riderMapper, StopFinderMapper stopFinderMapper) {
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    private static final long USER_STOP_TTL_SECONDS = 180;
+
+    public RiderService(RiderMapping riderMapper, StopFinderMapper stopFinderMapper,
+                        StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.riderMapper = riderMapper;
         this.stopFinderMapper = stopFinderMapper;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
     public List<BusRouteStopDTO> findFullRouteForRider(UUID riderId) {
-        //CAN CALL REDIS HERE
-
-        // Call the new mapper method
         return stopFinderMapper.getBusRouteForRider(riderId);
     }
     public int studentsInUsersBus(UUID riderId) {
-        // Call the new mapper method
         return stopFinderMapper.countRidersForBusRoute(riderId);
     }
     public Rider getById(UUID id){
@@ -37,6 +44,7 @@ public class RiderService {
     public List<Rider> getAll(){
         return riderMapper.getAll();
     }
+
     @Transactional
     public Boolean create_rider(Rider rider){
         rider.setId(UUID.randomUUID());
@@ -59,7 +67,24 @@ public class RiderService {
         return riderMapper.findByEmail(email).orElse(null);
     }
 
+//    public List<UserStopFinderDTO> findUserStop(UUID riderId) {
+//        return stopFinderMapper.getUserStopDetails(riderId);
+//    }
     public List<UserStopFinderDTO> findUserStop(UUID riderId) {
-        return stopFinderMapper.getUserStopDetails(riderId);
+        String key = "userStopDetails:" + riderId;
+        String cached = redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            try {
+                return objectMapper.readValue(cached, new TypeReference<List<UserStopFinderDTO>>() {});
+            } catch (Exception ignored) {
+            }
+        }
+        List<UserStopFinderDTO> result = stopFinderMapper.getUserStopDetails(riderId);
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            redisTemplate.opsForValue().set(key, json, USER_STOP_TTL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception ignored) {
+        }
+        return result;
     }
 }

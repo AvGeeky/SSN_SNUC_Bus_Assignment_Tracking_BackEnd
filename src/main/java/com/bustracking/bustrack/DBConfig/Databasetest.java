@@ -1,6 +1,8 @@
 package com.bustracking.bustrack.DBConfig;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,10 +14,12 @@ import java.sql.Connection;
 public class Databasetest implements CommandLineRunner {
 
     private final DataSource dataSource;
+    private final RedisConnectionFactory redisConnectionFactory;
     private static final Logger log = LoggerFactory.getLogger(Databasetest.class);
 
-    public Databasetest(DataSource dataSource) {
+    public Databasetest(DataSource dataSource, RedisConnectionFactory redisConnectionFactory) {
         this.dataSource = dataSource;
+        this.redisConnectionFactory = redisConnectionFactory;
     }
 
 
@@ -31,6 +35,17 @@ public class Databasetest implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.warn ("❌ Error connecting to database:");
+            log.warn("Exception: ", e);
+        }
+        try (RedisConnection redis = redisConnectionFactory.getConnection()) {
+            String pong = redis.ping();
+            if ("PONG".equalsIgnoreCase(pong)) {
+                log.info("Redis is up and responding to PING.");
+            } else {
+                log.info("❌ Redis responded unexpectedly: {}", pong);
+            }
+        } catch (Exception e) {
+            log.error("❌ Error connecting to Redis:");
             log.warn("Exception: ", e);
         }
     }

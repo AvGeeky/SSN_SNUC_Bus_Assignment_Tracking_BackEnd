@@ -1,21 +1,21 @@
 package com.bustracking.bustrack.Controller;
+import com.bustracking.bustrack.Services.*;
 import com.bustracking.bustrack.dto.ProfileFullDto;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.entities.Rider;
 import com.bustracking.bustrack.entities.Stop;
-import com.bustracking.bustrack.Services.StopService;
 import com.bustracking.bustrack.entities.Bus;
 import com.bustracking.bustrack.entities.Vehicle_rno_mapping;
-import com.bustracking.bustrack.Services.BusService;
-import com.bustracking.bustrack.Services.RiderService;
-import com.bustracking.bustrack.Services.ProfileService;
 import com.bustracking.bustrack.entities.Profile;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.bustracking.bustrack.Services.VehicleRnoService;
+
 import java.time.Instant;
 import java.util.*;
 @RestController
@@ -25,15 +25,63 @@ public class AdminController {
     private final RiderService RiderService;
     private final ProfileService ProfileService;
     private final VehicleRnoService VehicleRnoService;
+    private final BusDataService busDataService;
+    private StringRedisTemplate redisTemplate;
+    private ObjectMapper objectMapper;
+    private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
      @Autowired
-     public AdminController(StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService){
+     public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService){
          this.StopService=StopService;
          this.BusService = busService;
          this.RiderService = riderService;
          ProfileService = profileService;
-
          VehicleRnoService = vehicleRnoService;
+         this.redisTemplate = redisTemplate;
+         this.objectMapper = objectMapper;
+         this.busDataService = busDataService;
      }
+
+    @GetMapping("/admin/buses")
+    public ResponseEntity<Map<String, Object>> buses(@RequestParam(required = false) String busNo) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+
+            if (busNo == null || busNo.trim().isEmpty()) {
+                Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
+                Map<String, Object> cleanData = new HashMap<>();
+                for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
+                    String key = (String) entry.getKey();
+                    String jsonString = (String) entry.getValue();
+                    cleanData.put(key, objectMapper.readTree(jsonString));
+                }
+                response.put("status", "success");
+                response.put("message", "All live buses retrieved");
+                response.put("data", cleanData);
+                return ResponseEntity.ok(response);
+            }
+            else {
+                String normalizedKey = busNo.replace(" ", "");
+                Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedKey);
+                if (rawJson != null) {
+                    response.put("status", "success");
+                    response.put("data", objectMapper.readTree(rawJson.toString()));
+                    return ResponseEntity.ok(response);
+                } else {
+                    response.put("status", "error");
+                    response.put("message", "Bus not found or currently offline: " + busNo);
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                }
+            }
+
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Internal Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
      @PostMapping("/admin/insertStops")
      public ResponseEntity<Map<String,Object>> createStop(@RequestBody Map<String,Object> requestBody){
          Stop stop=Stop.builder()
@@ -56,6 +104,31 @@ public class AdminController {
              return ResponseEntity.status(503).body(response);
          }
      }
+    @PostMapping("/admin/updateGlobalViewToggle")
+    public ResponseEntity<Map<String,Object>> updateGlobalViewToggle (@RequestBody Map<String,Object> requestBody) {
+        Boolean toggle = Boolean.valueOf(requestBody.get("global_view_toggle").toString());
+        Boolean done = busDataService.setAdminGlobalSwitch(toggle);
+        Map<String, Object> response = new HashMap<>();
+        if (done) {
+            response.put("status", "S");
+            response.put("message", " global view toggle updated successfully");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status", "E");
+            response.put("message", "global view toggle not updated");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+    @GetMapping("/admin/viewGlobalViewToggle")
+    public ResponseEntity<Map<String,Object>> viewGlobalViewToggle () {
+        Boolean toggle = busDataService.getAdminGlobalSwitch();
+        Map<String, Object> response = new HashMap<>();
+
+            response.put("status", "S");
+            response.put("message", " global view toggle fetched successfully");
+            response.put("toggle",toggle);
+            return ResponseEntity.ok(response);
+    }
      @DeleteMapping("/admin/deleteStops")
      public ResponseEntity<Map<String,Object>> deleteStop(@RequestBody Map<String,Object> requestBody){
             Boolean done=StopService.delete_stop(UUID.fromString(requestBody.get("id").toString()));
