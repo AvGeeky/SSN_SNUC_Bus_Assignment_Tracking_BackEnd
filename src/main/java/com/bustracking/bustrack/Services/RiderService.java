@@ -46,9 +46,12 @@ public class RiderService {
     }
 
     @Transactional
-    public Boolean create_rider(Rider rider){
-        rider.setId(UUID.randomUUID());
-        int rows_affected=riderMapper.insert_rider(rider);
+    public Boolean create_rider(List<Rider> riders){
+        int rows_affected=0;
+        for(Rider rider : riders) {
+          rider.setId(UUID.randomUUID());
+           rows_affected += riderMapper.insert_rider(rider);
+      }
         return rows_affected>0;
     }
     @Transactional

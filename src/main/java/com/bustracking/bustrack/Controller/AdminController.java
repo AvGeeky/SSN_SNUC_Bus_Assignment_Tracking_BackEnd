@@ -274,31 +274,35 @@ public class AdminController {
     }
     @PostMapping("/admin/insertRider")
     public ResponseEntity<Map<String,Object>> createRider(@RequestBody Map<String,Object> requestBody){
-        Rider rider=Rider.builder()
-                .name((String)requestBody.get("name"))
-                .year(Integer.valueOf(requestBody.get("year").toString()))
-                .department((String) requestBody.get("department"))
-                .college((String)requestBody.get("college"))
-                .email((String)requestBody.get("email"))
-                .homeStopId(UUID.fromString(requestBody.get("home_stop_id").toString()))
-                .digitalId((String)requestBody.get("digital_id"))
-                .createdAt(Instant.now())
-                .build();
-       Boolean done=RiderService.create_rider(rider);
+        List<Map<String,Object>> riderListRaw = (List<Map<String,Object>>) requestBody.get("riders");
+        List<Rider> riders=new ArrayList<>();
+        for(Map<String,Object> r:riderListRaw){
+            Rider rider = Rider.builder()
+                    .name((String) r.get("name"))
+                    .year(Integer.valueOf(r.get("year").toString()))
+                    .department((String) r.get("department"))
+                    .college((String) r.get("college"))
+                    .email((String) r.get("email"))
+                    .homeStopId(UUID.fromString(r.get("home_stop_id").toString()))
+                    .digitalId((String) r.get("digital_id"))
+                    .createdAt(Instant.now())
+                    .build();
+            riders.add(rider);
+        }
+        Boolean done=RiderService.create_rider(riders);
         Map<String,Object> response=new HashMap<>();
-        if(done) {
-            response.put("status", "S");
-            response.put("message", "rider record inserted successfully");
-            response.put("data", rider);
+        if(done){
+            response.put("status","S");
+            response.put("message","riders have been added");
             return ResponseEntity.ok(response);
         }
         else{
-            response.put("status", "E");
-            response.put("message", "rider record not inserted successfully");
+            response.put("status","E");
+            response.put("message","riders have not  been added");
             return ResponseEntity.status(503).body(response);
-        }
 
-    }
+        }
+     }
     @GetMapping("/admin/getAllRiders")
     public ResponseEntity<Map<String,Object>> getAllRiders(){
         List<Rider> riders=RiderService.getAll();
@@ -685,6 +689,29 @@ public class AdminController {
                 response.put("message", "mapping not  updated successfully");
                 return ResponseEntity.status(503).body(response);
             }
+
+        }
+        @PostMapping("/admin/updateStop")
+        public ResponseEntity<Map<String,Object>> updateStop(@RequestBody Map<String,Object> requestBody){
+              Stop stop=Stop.builder()
+                      .id(UUID.fromString(requestBody.get("id").toString()))
+                      .name((String)requestBody.get("name"))
+                      .lat((Double)requestBody.get("lat"))
+                      .lng((Double)requestBody.get("lng")).build();
+              boolean done=StopService.update_stop(stop);
+              Map<String,Object> response=new HashMap<>();
+              if(done){
+                  response.put("status","S");
+                  response.put("message","stop updated successfully");
+                  return ResponseEntity.ok(response);
+
+              }
+              else{
+
+                  response.put("status","E");
+                  response.put("message","stop not updated successfully");
+                  return ResponseEntity.status(503).body(response);
+              }
 
         }
 

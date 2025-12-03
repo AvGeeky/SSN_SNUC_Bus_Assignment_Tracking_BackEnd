@@ -32,5 +32,9 @@ public class StopService {
         int rows_affected=stopMapper.delete_stop(id);
         return rows_affected>0;
     }
-
+    @Transactional
+    public Boolean update_stop(Stop stop){
+        int rows_affected=stopMapper.update_stop(stop);
+        return rows_affected>0;
+    }
 }
