@@ -359,6 +359,7 @@ public class AdminController {
                 .email((String)requestBody.get("email"))
                 .homeStopId(UUID.fromString(requestBody.get("home_stop_id").toString()))
                 .createdAt(Instant.now())
+                .digitalId(requestBody.get("digital_id").toString())
                 .build();
         Boolean done=RiderService.update_rider(rider);
         Map<String,Object> response=new HashMap<>();
