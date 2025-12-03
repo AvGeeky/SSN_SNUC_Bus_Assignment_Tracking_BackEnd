@@ -24,5 +24,7 @@ public interface StopMapping {
 
     @Select("SELECT * FROM stops")
     List<Stop> findAllStops();
+    @Update("update stops set name=#{name},lat=#{lat},lng=#{lng} where id=#{id}")
+    int update_stop(Stop stop);
 
 }
