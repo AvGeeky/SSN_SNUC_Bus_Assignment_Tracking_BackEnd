@@ -75,7 +75,7 @@ public class BusDataService {
             if (dataArray != null && dataArray.isArray()) {
                 for (JsonNode node : dataArray) {
                     BusLocationDTO bus = BusLocationDTO.builder()
-                            .regNo(node.get("vehicle_number").asText())
+                            .regNo(node.get("vehicle_number").asText().replace(" ", ""))
                             .latitude(node.get("lat_message").asDouble())
                             .longitude(node.get("lon_message").asDouble())
                             .speed(node.get("speed").asDouble())
@@ -99,7 +99,7 @@ public class BusDataService {
                     String normalizedReg = rawReg.replace(" ", "");
 
                     BusLocationDTO bus = BusLocationDTO.builder()
-                            .regNo(node.get("RegNo").asText())
+                            .regNo(node.get("RegNo").asText().replace(" ", ""))
                             .latitude(node.get("Lat").asDouble())
                             .longitude(node.get("Lng").asDouble())
                             .speed(node.get("Speed").asDouble())

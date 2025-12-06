@@ -15,7 +15,8 @@ import java.util.function.Function;
 public class JwtUtil {
 
     private final String secretKey = System.getenv("JWT_HMAC_SECRET");
-    private final long expiration = 30 * 86400000; // 30 days
+    //private final long expiration = 30 * 86400000; // 30 days
+    private final long expiration = 30L * 24L * 60L * 60L * 1000L; // 30 days in milliseconds
 
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
