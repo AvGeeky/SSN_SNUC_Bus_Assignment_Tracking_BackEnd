@@ -6,10 +6,7 @@ import com.bustracking.bustrack.dto.BusRouteStopDTO;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
-import com.bustracking.bustrack.entities.Bus;
-import com.bustracking.bustrack.entities.Profile;
-import com.bustracking.bustrack.entities.Rider;
-import com.bustracking.bustrack.entities.Stop;
+import com.bustracking.bustrack.entities.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -33,14 +30,16 @@ public class UserController {
     private StringRedisTemplate redisTemplate;
     private ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
+    private final VehicleRnoService vehicleRnoService;
 
     @Autowired
-     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper){
+     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper, VehicleRnoService vehicleRnoService){
         this.riderService = riderService;
         this.jwtUtil = jwtUtil;
         this.busDataService = busDataService;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.vehicleRnoService = vehicleRnoService;
     }
 
     @GetMapping("/user/buses")
@@ -137,9 +136,28 @@ public class UserController {
          else{
           response.put("status","E");
           response.put("message","User stop details not found / Unauthorized access");
-          return ResponseEntity.status(503).body(response);
+          return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 
          }
+    }
+
+    @GetMapping("/user/getAllRnoVehicleMapping")
+    public ResponseEntity<Map<String,Object>> getrnoVehicleMapping(){
+        List<Vehicle_rno_mapping> mappings=vehicleRnoService.getAll();
+
+        Map<String,Object> response=new HashMap<>();
+        if(mappings!=null){
+            response.put("status","S");
+            response.put("result",mappings);
+            response.put("message","Mapping retrieved successfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Mappings not retrieved successfully");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
     }
 
 
