@@ -303,8 +303,6 @@ public class ProfileService {
     public boolean deleteProfileRiderStop(UUID profileRiderStopId) {
         return profileRiderStopMapper.deleteProfileRiderStop(profileRiderStopId) > 0;
     }
-
-
     @Transactional(rollbackFor = Exception.class)
     public void create_full_profile_from_excel(MultipartFile file, String profileName, String profileStatus) throws Exception {
 
@@ -315,17 +313,26 @@ public class ProfileService {
         profileDto.setStatus(profileStatus);
         profileRequest.setProfile(profileDto);
 
-        // Pre-fetch all riders into a map for quick lookup by digitalId (RollNo)
+        // 1. FAST LOOKUP MAPS (Prevents "TooManyResultsException" crash)
+        // We load all riders once. If duplicates exist, putIfAbsent keeps the first one and ignores the rest.
         Map<String, Rider> riderMap = new HashMap<>();
-        for (Rider r : riderMapping.findAllRiders()) {
-            if (r.getDigitalId() == null) continue;
-            riderMap.put(r.getDigitalId().toLowerCase().trim(), r);
+        List<Rider> allRiders = riderMapping.getAll(); // Ensure this method exists in your RiderMapping
+
+        if (allRiders != null) {
+            for (Rider r : allRiders) {
+                if (r.getDigitalId() == null) continue;
+                riderMap.putIfAbsent(r.getDigitalId().toLowerCase().trim(), r);
+            }
         }
 
         Map<String, Stop> stopMap = new HashMap<>();
-        for (Stop r : stopMapper.findAllStops()) {
-            if (r.getName() == null) continue;
-            stopMap.put(r.getName().toLowerCase().trim(), r);
+        List<Stop> allStops = stopMapper.getAll();
+
+        if (allStops != null) {
+            for (Stop s : allStops) {
+                if (s.getName() == null) continue;
+                stopMap.put(s.getName().toLowerCase().trim(), s);
+            }
         }
 
         List<ProfileBusDto> buses = new ArrayList<>();
@@ -333,82 +340,77 @@ public class ProfileService {
         try (InputStream is = file.getInputStream();
              Workbook workbook = new XSSFWorkbook(is)) {
 
-            // 2. Iterate over each SHEET (each sheet is one BUS)
             for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
                 Sheet sheet = workbook.getSheetAt(i);
-
-                // The Route Number (e.g., "9A", "43") is the sheet name.
                 String routeNumber = sheet.getSheetName().trim();
 
-                // -----------------------------------------------------------------
-                // NEW LOGIC: Use the map to find the bus license plate
-                // -----------------------------------------------------------------
+                // --- Bus Lookup ---
                 String licensePlate = ROUTE_TO_BUS_NUMBER_MAP.get(routeNumber);
-
                 if (licensePlate == null) {
-                    log.warn("Warning: Route '{}' is not in the hardcoded map. Skipping sheet.", routeNumber);
-                    continue; // Skip this sheet
+                    System.out.println("Warning: Route '" + routeNumber + "' skipped (no map entry).");
+                    continue;
                 }
 
-                // Now find the bus in the database using the license plate
-                // Uses your 'busMapper' variable
                 Bus databaseBus = busMapper.findByBusNumber(licensePlate);
-
                 if (databaseBus == null) {
-                    log.warn("Warning: Bus with license plate '{}' (for route {}) not found in DB. Skipping sheet.", licensePlate, routeNumber);
-                    continue; // Skip this sheet
+                    System.out.println("Warning: Bus '" + licensePlate + "' not found in DB.");
+                    continue;
                 }
-                // -----------------------------------------------------------------
 
-
-                // We found the bus! Now we can build the DTO.
                 ProfileBusDto busDto = new ProfileBusDto();
-                busDto.setBusId(databaseBus.getId()); // <-- This is the Bus UUID
-                busDto.setBusNumber(routeNumber);     // <-- This is the Route No ("9A")
+                busDto.setBusId(databaseBus.getId());
+                busDto.setBusNumber(routeNumber);
 
                 List<AssignmentDto> assignmentsForThisBus = new ArrayList<>();
                 // Use LinkedHashMap to preserve the insertion order of stops
                 Map<String, ProfileStopDto> uniqueStops = new LinkedHashMap<>();
                 int stopOrderCounter = 1;
 
-                // 3. Iterate over each ROW (each row is a RIDER ASSIGNMENT)
-                // Assuming row 0 is header, data starts at row 1
+                // -----------------------------------------------------------
+                // 🚨 CHECK THIS INDEX!
+                // 0=A, 1=B, 2=C, 3=D, 4=E, 5=F(Boarding), 6=G, 7=H
+                // -----------------------------------------------------------
+                int STOP_TIME_COL_INDEX = 7;
+                // -----------------------------------------------------------
+
                 for (int j = 1; j <= sheet.getLastRowNum(); j++) {
                     Row row = sheet.getRow(j);
-                    // Col 1 = RollNo, Col 5 = Boarding Point (based on your '9A.csv' sample)
-                    if (row == null || row.getCell(1) == null || row.getCell(5) == null) {
-                        continue;
-                    }
+
+                    if (row == null || row.getCell(1) == null || row.getCell(5) == null) continue;
 
                     String rollNo = getCellStringValue(row.getCell(1)).trim();
                     String boardingPointName = getCellStringValue(row.getCell(5)).trim();
 
-                    if (rollNo.isEmpty() || boardingPointName.isEmpty()) {
-                        continue;
+                    // Safely read stop time (DataFormatter handles "10:00" vs 0.4166)
+                    String stopTimeRaw = "";
+                    if (row.getCell(STOP_TIME_COL_INDEX) != null) {
+                        stopTimeRaw = getCellStringValue(row.getCell(STOP_TIME_COL_INDEX)).trim();
                     }
+                    String stopTime = stopTimeRaw.isEmpty() ? "00:00" : stopTimeRaw;
 
-                    String normalizedRoll = rollNo.toLowerCase().trim();
-                    Rider databaseRider = riderMap.get(normalizedRoll);
+                    if (rollNo.isEmpty() || boardingPointName.isEmpty()) continue;
+
+                    // --- Rider Lookup (Using Fast Map) ---
+                    Rider databaseRider = riderMap.get(rollNo.toLowerCase().trim());
                     if (databaseRider == null) {
-                        log.warn("Warning: Rider with RollNo(digital_id) '{}' not found. Skipping.", rollNo);
+                        System.out.println("Warning: Rider '" + rollNo + "' not found in DB.");
                         continue;
                     }
 
-                    // --- Process the Stop (using name) ---
+                    // --- Stop Lookup & Creation ---
                     ProfileStopDto stopDto;
                     if (!uniqueStops.containsKey(boardingPointName)) {
-                        // Uses your 'stopMapper' variable
 
                         Stop databaseStop = stopMap.get(boardingPointName.toLowerCase().trim());
                         if (databaseStop == null) {
-                            log.warn("Warning: Stop with name '{}' not found. Skipping.", boardingPointName);
+                            System.out.println("Warning: Stop '" + boardingPointName + "' not found in DB.");
                             continue;
                         }
 
                         stopDto = new ProfileStopDto();
                         stopDto.setStopId(databaseStop.getId());
                         stopDto.setStopOrder(stopOrderCounter);
-                        stopDto.setStopTime("00:00"); // Setting default time, as it's not in Excel
+                        stopDto.setStopTime(stopTime); // ✅ Saving the time from Excel
 
                         uniqueStops.put(boardingPointName, stopDto);
                         stopOrderCounter++;
@@ -416,10 +418,10 @@ public class ProfileService {
                         stopDto = uniqueStops.get(boardingPointName);
                     }
 
-                    // 4. Create the Assignment DTO
+                    // --- Assignment ---
                     AssignmentDto assignment = new AssignmentDto();
                     assignment.setRiderId(databaseRider.getId());
-                    assignment.setProfileStopIndex(stopDto.getStopOrder()); // Link to the stop's order
+                    assignment.setProfileStopIndex(stopDto.getStopOrder());
 
                     assignmentsForThisBus.add(assignment);
                 }
@@ -432,20 +434,22 @@ public class ProfileService {
 
         profileRequest.setBuses(buses);
 
-        // 5. Finally, call your existing transactional method
+        // Call existing method to save to DB
         this.create_full_profile(profileRequest);
     }
-
-    /**
-     * Helper method to safely get string values from any cell type
-     * (e.g., handles numeric RollNo as a String).
-     */
     private String getCellStringValue(Cell cell) {
+
         if (cell == null) {
+
             return "";
+
         }
+
         DataFormatter formatter = new DataFormatter();
+
         return formatter.formatCellValue(cell);
+
     }
+
 
 }
