@@ -70,7 +70,7 @@ public class UserController {
             String jwt = authHeader.substring(7);
             String userEmail = jwtUtil.extractEmail(jwt);
             UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
-            List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
+            List<UserStopFinderDTO> data = riderService.findUserStop(riderId,false);
             List<String> busPlateNumbers = data.stream()
                     .map(UserStopFinderDTO::getBusPlateNumber)
                     .distinct()
@@ -118,11 +118,11 @@ public class UserController {
         String userEmail = jwtUtil.extractEmail(jwt);
 
         UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
-         List<UserStopFinderDTO> data = riderService.findUserStop(riderId);
+        List<UserStopFinderDTO> data = riderService.findUserStop(riderId,true);
 
          List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
          //Calling it here only to cache it.
-        riderService.findUserStop(riderId);
+        //riderService.findUserStop(riderId,true);
 
          Map<String,Object> response=new HashMap<>();
          if(stops!=null){
