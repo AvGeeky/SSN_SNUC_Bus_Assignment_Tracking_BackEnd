@@ -73,15 +73,41 @@ public class RiderService {
 //    public List<UserStopFinderDTO> findUserStop(UUID riderId) {
 //        return stopFinderMapper.getUserStopDetails(riderId);
 //    }
-    public List<UserStopFinderDTO> findUserStop(UUID riderId) {
+//    public List<UserStopFinderDTO> findUserStop(UUID riderId, boolean forceCacheRefresh) {
+//        String key = "userStopDetails:" + riderId;
+//        String cached = redisTemplate.opsForValue().get(key);
+//        if (cached != null) {
+//            try {
+//                return objectMapper.readValue(cached, new TypeReference<List<UserStopFinderDTO>>() {});
+//            } catch (Exception ignored) {
+//            }
+//        }
+//        List<UserStopFinderDTO> result = stopFinderMapper.getUserStopDetails(riderId);
+//        try {
+//            String json = objectMapper.writeValueAsString(result);
+//            redisTemplate.opsForValue().set(key, json, USER_STOP_TTL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+//        } catch (Exception ignored) {
+//        }
+//        return result;
+//    }
+
+    public List<UserStopFinderDTO> findUserStop(UUID riderId, boolean forceCacheRefresh) {
         String key = "userStopDetails:" + riderId;
-        String cached = redisTemplate.opsForValue().get(key);
-        if (cached != null) {
+        if (!forceCacheRefresh) {
+            String cached = redisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                try {
+                    return objectMapper.readValue(cached, new TypeReference<List<UserStopFinderDTO>>() {});
+                } catch (Exception ignored) {
+                }
+            }
+        } else {
             try {
-                return objectMapper.readValue(cached, new TypeReference<List<UserStopFinderDTO>>() {});
+                redisTemplate.delete(key);
             } catch (Exception ignored) {
             }
         }
+
         List<UserStopFinderDTO> result = stopFinderMapper.getUserStopDetails(riderId);
         try {
             String json = objectMapper.writeValueAsString(result);
@@ -90,4 +116,5 @@ public class RiderService {
         }
         return result;
     }
+
 }
