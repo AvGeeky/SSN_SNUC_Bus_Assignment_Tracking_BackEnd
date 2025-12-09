@@ -1,6 +1,6 @@
 package com.bustracking.bustrack.Controller;
 import com.bustracking.bustrack.Services.*;
-import com.bustracking.bustrack.dto.ProfileFullDto;
+import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.entities.Rider;
@@ -9,6 +9,8 @@ import com.bustracking.bustrack.entities.Bus;
 import com.bustracking.bustrack.entities.Vehicle_rno_mapping;
 import com.bustracking.bustrack.entities.Profile;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -20,14 +22,15 @@ import java.time.Instant;
 import java.util.*;
 @RestController
 public class AdminController {
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
      private final  StopService StopService;
      private final BusService BusService;
     private final RiderService RiderService;
     private final ProfileService ProfileService;
     private final VehicleRnoService VehicleRnoService;
     private final BusDataService busDataService;
-    private StringRedisTemplate redisTemplate;
-    private ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
      @Autowired
      public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService){
@@ -106,8 +109,9 @@ public class AdminController {
      }
     @PostMapping("/admin/updateGlobalViewToggle")
     public ResponseEntity<Map<String,Object>> updateGlobalViewToggle (@RequestBody Map<String,Object> requestBody) {
-        Boolean toggle = Boolean.valueOf(requestBody.get("global_view_toggle").toString());
-        Boolean done = busDataService.setAdminGlobalSwitch(toggle);
+        Object gv = requestBody.get("global_view_toggle");
+        boolean toggle = (gv instanceof Boolean) ? (Boolean) gv : Boolean.parseBoolean(String.valueOf(gv));
+        boolean done = busDataService.setAdminGlobalSwitch(toggle);
         Map<String, Object> response = new HashMap<>();
         if (done) {
             response.put("status", "S");
@@ -274,7 +278,15 @@ public class AdminController {
     }
     @PostMapping("/admin/insertRider")
     public ResponseEntity<Map<String,Object>> createRider(@RequestBody Map<String,Object> requestBody){
-        List<Map<String,Object>> riderListRaw = (List<Map<String,Object>>) requestBody.get("riders");
+        Object ridersObj = requestBody.get("riders");
+        if (!(ridersObj instanceof List<?>)) {
+            Map<String,Object> response = new HashMap<>();
+            response.put("status","E");
+            response.put("message","Invalid riders data format");
+            return ResponseEntity.status(400).body(response);
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> riderListRaw = (List<Map<String,Object>>) ridersObj;
         List<Rider> riders=new ArrayList<>();
         for(Map<String,Object> r:riderListRaw){
             Rider rider = Rider.builder()
@@ -395,8 +407,7 @@ public class AdminController {
         } catch (Exception e) {
             resp.put("status", "E");
             // Add the error message for debugging
-            resp.put("message", "Failed to process Excel file: " + e.getMessage());
-            e.printStackTrace(); // Prints the full error to your server console
+            log.warn("Failed to process Excel file: " + e.getMessage());
             return ResponseEntity.status(500).body(resp);
         }
     }

@@ -2,9 +2,8 @@ package com.bustracking.bustrack.Controller;
 
 import com.bustracking.bustrack.Auth.JwtUtil;
 import com.bustracking.bustrack.Services.*;
+import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.BusRouteStopDTO;
-import com.bustracking.bustrack.dto.ProfileRequest;
-import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.entities.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +25,8 @@ public class UserController {
     private final RiderService riderService;
     private final JwtUtil jwtUtil;
     private final BusDataService busDataService;
-    private StringRedisTemplate redisTemplate;
-    private ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
     private final VehicleRnoService vehicleRnoService;
 
@@ -68,7 +66,7 @@ public class UserController {
         }
         else {
             String jwt = authHeader.substring(7);
-            String userEmail = jwtUtil.extractEmail(jwt);
+            //String userEmail = jwtUtil.extractEmail(jwt);
             UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
             List<UserStopFinderDTO> data = riderService.findUserStop(riderId,false);
             List<String> busPlateNumbers = data.stream()
@@ -115,7 +113,7 @@ public class UserController {
 
         String jwt = authHeader.substring(7);
 
-        String userEmail = jwtUtil.extractEmail(jwt);
+        //String userEmail = jwtUtil.extractEmail(jwt);
 
         UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
         List<UserStopFinderDTO> data = riderService.findUserStop(riderId,true);

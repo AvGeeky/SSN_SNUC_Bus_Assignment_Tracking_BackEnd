@@ -1,6 +1,5 @@
-package com.bustracking.bustrack.Services;
+package com.bustracking.bustrack.Services.GPSService;
 
-import com.bustracking.bustrack.Services.BusDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,7 @@ public class BusTrackingThread implements CommandLineRunner {
     // Schedule Config
     private static final LocalTime MORNING_START = LocalTime.of(5, 30);
     private static final LocalTime MORNING_END = LocalTime.of(9, 0);
-    private static final LocalTime EVENING_START = LocalTime.of(13, 0);
+    private static final LocalTime EVENING_START = LocalTime.of(12, 30);
     private static final LocalTime EVENING_END = LocalTime.of(19, 30);
 
     @Override
@@ -32,14 +31,23 @@ public class BusTrackingThread implements CommandLineRunner {
         worker.setName("Bus-Tracking-Worker");
         worker.start();
     }
-
     private void eventLoop() {
         log.info("Bus Tracking Thread Started...");
         while (running) {
+            BusDataService.FetchStatus status = dataService.fetchAndPublish();
+            long sleepMillis = switch (status) {
+                case SUCCESS -> calculateSleepDuration();
+                case PARTIAL_FAILURE -> {
+                    log.warn("Partial Failure detected. Retrying in 10s.");
+                    yield 10000;
+                }
+                case TOTAL_FAILURE -> {
+                    log.error("Total Failure / Empty Data. Retrying in 10s.");
+                    yield 10000;
+                }
+                default -> 10000;
+            };
 
-            dataService.fetchAndPublish();
-
-            long sleepMillis = calculateSleepDuration();
             try {
                 Thread.sleep(sleepMillis);
             } catch (InterruptedException e) {
@@ -48,7 +56,6 @@ public class BusTrackingThread implements CommandLineRunner {
             }
         }
     }
-
     private long calculateSleepDuration() {
         LocalTime now = LocalTime.now();
         long peakSleep = 10 * 1000;         // 10 seconds
