@@ -79,7 +79,7 @@ public class BusDataService {
         if (!batchData.isEmpty()) {
 
             redisTemplate.opsForHash().putAll(REDIS_HASH_KEY, batchData); //update tghe value in redis and renew the expiry to another 20mins
-            redisTemplate.expire(REDIS_HASH_KEY, Duration.ofMinutes(20));
+            redisTemplate.expire(REDIS_HASH_KEY, Duration.ofDays(1));
 
             if (api1Success && api2Success) {
                 log.debug("Full Success: Redis merged with " + batchData.size() + " buses.");
