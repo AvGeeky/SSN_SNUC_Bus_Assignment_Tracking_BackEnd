@@ -23,7 +23,7 @@ public class RiderService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final long USER_STOP_TTL_SECONDS = 180;
+    private static final long USER_STOP_TTL_SECONDS = 600;
 
     public RiderService(RiderMapping riderMapper, StopFinderMapper stopFinderMapper,
                         StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
