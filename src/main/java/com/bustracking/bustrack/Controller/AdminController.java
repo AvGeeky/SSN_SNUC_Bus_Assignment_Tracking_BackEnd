@@ -686,7 +686,7 @@ public class AdminController {
             Vehicle_rno_mapping mapping=Vehicle_rno_mapping.builder()
                     .id(UUID.fromString(requestBody.get("id").toString()))
                     .routeNo((String)requestBody.get("route_no"))
-                    .vehicleNo((String)requestBody.get("vehicle_rno"))
+                    .vehicleNo((String)requestBody.get("vehicle_no"))
                     .build();
             Boolean done =VehicleRnoService.update_vehicle_rno_mappings(mapping);
             Map<String,Object> response=new HashMap<>();
