@@ -33,6 +33,14 @@ public class RiderAuthInterceptor implements HandlerInterceptor {
 
         final String authHeader = request.getHeader("Authorization");
         String jwt = null;
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
+            response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
+            response.setHeader("Access-Control-Allow-Credentials", "true");
+            response.setStatus(HttpServletResponse.SC_OK);
+            return false; // Stop processing and return 200/204 to the browser
+        }
 
         // 2. Validate Header format
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
