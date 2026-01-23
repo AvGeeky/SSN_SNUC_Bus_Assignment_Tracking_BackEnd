@@ -1,0 +1,41 @@
+services:
+
+  redis:
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+      args:
+        REDIS_PASSWORD: ${REDIS_PASSWORD}
+    container_name: redis-development
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - dev-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-development
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bustracking_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - dev-network
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  dev-network:
+    driver: bridge

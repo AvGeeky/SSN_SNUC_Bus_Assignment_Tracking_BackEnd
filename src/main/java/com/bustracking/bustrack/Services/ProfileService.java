@@ -366,10 +366,6 @@ public class ProfileService {
                 Map<String, ProfileStopDto> uniqueStops = new LinkedHashMap<>();
                 int stopOrderCounter = 1;
 
-                // -----------------------------------------------------------
-                // 🚨 CHECK THIS INDEX!
-                // 0=A, 1=B, 2=C, 3=D, 4=E, 5=F(Boarding), 6=G, 7=H
-                // -----------------------------------------------------------
                 int STOP_TIME_COL_INDEX = 7;
                 // -----------------------------------------------------------
 

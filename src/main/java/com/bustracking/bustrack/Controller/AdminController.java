@@ -20,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
+
 @RestController
 public class AdminController {
     private static final Logger log = LoggerFactory.getLogger(AdminController.class);
@@ -288,17 +290,40 @@ public class AdminController {
         @SuppressWarnings("unchecked")
         List<Map<String,Object>> riderListRaw = (List<Map<String,Object>>) ridersObj;
         List<Rider> riders=new ArrayList<>();
-        for(Map<String,Object> r:riderListRaw){
+        for (Map<String, Object> r : riderListRaw) {
+            // Safe helper for Strings (prevents "null" string bug)
+            Function<String, String> safeStr = (key) -> {
+                Object val = r.get(key);
+                return val != null ? String.valueOf(val).trim() : null;
+            };
+
+            // Safe helper for Integers (handles Strings, Ints, and Doubles like 23.0)
+            Function<String, Integer> safeInt = (key) -> {
+                Object val = r.get(key);
+                if (val == null) return null;
+                try {
+                    // parsing as double first handles "23.0" cases safely
+                    return (int) Double.parseDouble(String.valueOf(val));
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            };
+
+            String homeStopIdStr = safeStr.apply("home_stop_id");
+
             Rider rider = Rider.builder()
-                    .name((String) r.get("name"))
-                    .year(Integer.valueOf(r.get("year").toString()))
-                    .department((String) r.get("department"))
-                    .college((String) r.get("college"))
-                    .email((String) r.get("email"))
-                    .homeStopId(UUID.fromString(r.get("home_stop_id").toString()))
-                    .digitalId((String) r.get("digital_id"))
+                    .name(safeStr.apply("name"))
+                    .year(safeInt.apply("year"))
+                    .department(safeStr.apply("department"))
+                    .college(safeStr.apply("college"))
+                    .email(safeStr.apply("email"))
+                    .homeStopId((homeStopIdStr != null && !homeStopIdStr.isEmpty())
+                            ? UUID.fromString(homeStopIdStr)
+                            : null)
+                    .digitalId(safeStr.apply("digital_id"))
                     .createdAt(Instant.now())
                     .build();
+
             riders.add(rider);
         }
         Boolean done=RiderService.create_rider(riders);
