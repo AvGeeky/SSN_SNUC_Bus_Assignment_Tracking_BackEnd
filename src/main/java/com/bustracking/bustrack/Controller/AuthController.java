@@ -50,33 +50,33 @@ public class AuthController {
             Object userDetails;
             String role;
 
-            // 1. Check if the user is an admin in allowed_emails
-
-            AllowedEmail admin = allowedEmailService.getByEmail(email);
-            if (admin != null && "admin".equalsIgnoreCase(admin.getRole())) {
-                String adminEmail = admin.getEmail();
-                role = "admin";
+            // 1. First check if the user is a rider
+            Rider rider = riderService.getByEmail(email);
+            if (rider != null) {
+                role = "rider";
                 claims.put("role", role);
-                claims.put("email", adminEmail);
-                userDetails = admin;
-            } else if (admin != null) {
-                // User exists in allowed_emails but is not an admin
-                response.put("status", "E");
-                response.put("message", "User is not an admin.");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+                claims.put("riderId", rider.getId().toString());
+                claims.put("email", rider.getEmail());
+                userDetails = rider;
             } else {
-                // 2. If not an admin, check if the user is a rider
-                Rider rider = riderService.getByEmail(email);
-                if (rider != null) {
-                    role = "rider";
+                // 2. If not a rider, check if the user is an admin
+                AllowedEmail admin = allowedEmailService.getByEmail(email);
+
+                if (admin != null && "admin".equalsIgnoreCase(admin.getRole())) {
+                    String adminEmail = admin.getEmail();
+                    role = "admin";
                     claims.put("role", role);
-                    claims.put("riderId", rider.getId().toString());
-                    claims.put("email", rider.getEmail());
-                    userDetails = rider;
+                    claims.put("email", adminEmail);
+                    userDetails = admin;
+                } else if (admin != null) {
+                    // User exists in allowed_emails but is not an admin
+                    response.put("status", "E");
+                    response.put("message", "User is not an admin.");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
                 } else {
                     // 3. If neither, the user is not authorized
                     response.put("status", "E");
-                    response.put("message", "User is not registered as an admin or a rider.");
+                    response.put("message", "User is not registered as a rider or an admin.");
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
                 }
             }

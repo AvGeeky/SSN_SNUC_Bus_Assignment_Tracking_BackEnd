@@ -58,7 +58,7 @@ public class BusTrackingThread implements CommandLineRunner {
     }
     private long calculateSleepDuration() {
         LocalTime now = LocalTime.now();
-        long peakSleep = 10 * 1000;         // 10 seconds
+        long peakSleep = 5 * 1000;         // 10 seconds
         long offPeakSleep = 15 * 60 * 1000; // 15 minutes
 
         boolean isMorningPeak = !now.isBefore(MORNING_START) && now.isBefore(MORNING_END);

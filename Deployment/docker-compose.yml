@@ -1,0 +1,135 @@
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: bus-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend-network]
+
+  redis:
+    image: redis:7.4.3-alpine
+    container_name: bus-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly no
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - ./redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend-network]
+
+  backend:
+    image: saip2005/busapp:1.7
+    container_name: bus-backend
+    restart: always
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bus-postgres:5432/${POSTGRES_USER}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: bus-redis
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: 6379
+      SERVER_PORT: 8080
+
+
+    env_file:
+      - .env
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP"]
+      interval: 15s
+      retries: 5
+      start_period: 30s
+    networks: [backend-network]
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    expose:
+      - "9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    networks: [backend-network]
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASS}
+
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks: [backend-network]
+
+  nginx:
+    image: nginx:alpine
+    container_name: bus-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static/user:/usr/share/nginx/html/user:ro
+      - ./static/admin:/usr/share/nginx/html/admin:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [backend-network]
+
+  redis-exporter:
+    image: oliver006/redis_exporter
+    environment:
+      REDIS_ADDR: redis://bus-redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis: { condition: service_healthy }
+    networks: [ backend-network ]
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: bus-postgres-exporter
+    restart: always
+    environment:
+      # Connection string to the database
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@bus-postgres:5432/${POSTGRES_USER}?sslmode=disable"
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [ backend-network ]
+
+
+networks:
+  backend-network:
+    driver: bridge
