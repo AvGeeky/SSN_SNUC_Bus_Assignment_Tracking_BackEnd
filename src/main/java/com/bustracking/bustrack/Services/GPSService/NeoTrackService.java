@@ -59,6 +59,8 @@ public class NeoTrackService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executorService = Executors.newCachedThreadPool();
+    int REFRESH_SECONDS_FAST = Integer.parseInt(System.getenv("REFRESH_SECONDS_FAST"));
+    int REFRESH_MINUTES_SLOW = Integer.parseInt(System.getenv("REFRESH_MINUTES_SLOW"));
 
     private volatile boolean running = true;
 
@@ -229,8 +231,8 @@ public class NeoTrackService {
 
     private long calculateSleepDuration() {
         LocalTime now = LocalTime.now();
-        long peakSleep = 5 * 1000;         // 10 seconds
-        long offPeakSleep = 15 * 60 * 1000; // 15 minutes
+        long peakSleep = REFRESH_SECONDS_FAST * 1000L;         // 10 seconds
+        long offPeakSleep = (long) REFRESH_MINUTES_SLOW * 60 * 1000; // 15 minutes
 
         boolean isMorningPeak = !now.isBefore(MORNING_START) && now.isBefore(MORNING_END);
         boolean isEveningPeak = !now.isBefore(EVENING_START) && now.isBefore(EVENING_END);

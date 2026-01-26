@@ -24,6 +24,8 @@ public class BusTrackingThread implements CommandLineRunner {
     private static final LocalTime MORNING_END = LocalTime.of(9, 0);
     private static final LocalTime EVENING_START = LocalTime.of(12, 30);
     private static final LocalTime EVENING_END = LocalTime.of(19, 30);
+    int REFRESH_SECONDS_FAST = Integer.parseInt(System.getenv("REFRESH_SECONDS_FAST"));
+    int REFRESH_MINUTES_SLOW = Integer.parseInt(System.getenv("REFRESH_MINUTES_SLOW"));
 
     @Override
     public void run(String... args) {
@@ -58,8 +60,8 @@ public class BusTrackingThread implements CommandLineRunner {
     }
     private long calculateSleepDuration() {
         LocalTime now = LocalTime.now();
-        long peakSleep = 5 * 1000;         // 10 seconds
-        long offPeakSleep = 15 * 60 * 1000; // 15 minutes
+        long peakSleep = REFRESH_SECONDS_FAST * 1000L;
+        long offPeakSleep = (long) REFRESH_MINUTES_SLOW * 60 * 1000;
 
         boolean isMorningPeak = !now.isBefore(MORNING_START) && now.isBefore(MORNING_END);
         boolean isEveningPeak = !now.isBefore(EVENING_START) && now.isBefore(EVENING_END);
