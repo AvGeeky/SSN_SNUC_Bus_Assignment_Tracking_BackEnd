@@ -21,8 +21,6 @@ public class BusDataService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
-//    private boolean DEBUG_FAIL_API1= true;
-//    private boolean DEBUG_FAIL_API2= true;
 
     private String url1;
     private String url2;
@@ -34,8 +32,7 @@ public class BusDataService {
 
     public enum FetchStatus {
         SUCCESS,
-        PARTIAL_FAILURE,
-        TOTAL_FAILURE
+        FAILURE
     }
 
     @PostConstruct
@@ -48,59 +45,49 @@ public class BusDataService {
         }
     }
 
-    public FetchStatus fetchAndPublish() {
+    public FetchStatus fetchAndPublishApi1() {
         Map<String, String> batchData = new HashMap<>();
-        boolean api1Success = true;
-        boolean api2Success = true;
-
-
         try {
-//            if (DEBUG_FAIL_API1) {
-//                throw new RuntimeException("Simulated API 1 failure for debugging.");
-//            }
-            String response1 = restTemplate.getForObject(url1, String.class);
-            parseApi1(response1, batchData);
-        } catch (Exception e) {
-            log.error("API 1 Failed: " + e.getMessage());
-            api1Success = false;
-        }
-        try {
-//            if (DEBUG_FAIL_API2) {
-//                throw new RuntimeException("Simulated API 2 failure for debugging.");
-//            }
-            String response2 = restTemplate.getForObject(url2, String.class);
-            parseApi2(response2, batchData);
-        } catch (Exception e) {
-            log.error("API 2 Failed: " + e.getMessage());
-            api2Success = false;
-        }
+            String response = restTemplate.getForObject(url1, String.class);
+            parseApi1(response, batchData);
 
-
-        if (!batchData.isEmpty()) {
-
-            redisTemplate.opsForHash().putAll(REDIS_HASH_KEY, batchData); //update tghe value in redis and renew the expiry to another 20mins
-            redisTemplate.expire(REDIS_HASH_KEY, Duration.ofDays(1));
-
-            if (api1Success && api2Success) {
-                log.debug("Full Success: Redis merged with " + batchData.size() + " buses.");
-                log.debug("Data: " + batchData);
+            if (!batchData.isEmpty()) {
+                updateRedis(batchData);
+                log.debug("API 1 Success: Updated " + batchData.size() + " buses.");
                 return FetchStatus.SUCCESS;
             } else {
-                log.warn("Partial Success: Redis merged, but one API failed.");
-                if (!api1Success) {
-                    log.warn("API 1 Failure");
-                }
-                if (!api2Success) {
-                    log.warn("API 2 Failure");
-                }
-                log.warn("Data: " + batchData);
-                return FetchStatus.PARTIAL_FAILURE;
+                log.warn("API 1 Empty Data");
+                return FetchStatus.FAILURE;
             }
+        } catch (Exception e) {
+            log.error("API 1 Failed: " + e.getMessage());
+            return FetchStatus.FAILURE;
         }
+    }
 
-        // If map is empty, it means both APIs failed
-        log.error("Total Failure: No bus data collected.");
-        return FetchStatus.TOTAL_FAILURE;
+    public FetchStatus fetchAndPublishApi2() {
+        Map<String, String> batchData = new HashMap<>();
+        try {
+            String response = restTemplate.getForObject(url2, String.class);
+            parseApi2(response, batchData);
+
+            if (!batchData.isEmpty()) {
+                updateRedis(batchData);
+                log.debug("API 2 Success: Updated " + batchData.size() + " buses.");
+                return FetchStatus.SUCCESS;
+            } else {
+                log.warn("API 2 Empty Data");
+                return FetchStatus.FAILURE;
+            }
+        } catch (Exception e) {
+            log.error("API 2 Failed: " + e.getMessage());
+            return FetchStatus.FAILURE;
+        }
+    }
+
+    private void updateRedis(Map<String, String> data) {
+        redisTemplate.opsForHash().putAll(REDIS_HASH_KEY, data);
+        redisTemplate.expire(REDIS_HASH_KEY, Duration.ofDays(1));
     }
 
     private void parseApi1(String json, Map<String, String> batch) {
@@ -149,18 +136,14 @@ public class BusDataService {
         if (truth) {
             redisTemplate.opsForValue().set("ADMIN_TOGGLE","YES");
             return true;
-        }
-        else{
+        } else {
             redisTemplate.opsForValue().set("ADMIN_TOGGLE","FALSE");
             return true;
         }
-
     }
+
     public boolean getAdminGlobalSwitch(){
         String val =  redisTemplate.opsForValue().get("ADMIN_TOGGLE");
-        if (val == null) {
-            return false;
-        }
         return "YES".equals(val);
     }
 }

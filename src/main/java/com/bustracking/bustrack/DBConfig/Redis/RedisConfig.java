@@ -45,9 +45,18 @@ public class RedisConfig {
 
     private org.apache.commons.pool2.impl.GenericObjectPoolConfig buildPoolConfig() {
         org.apache.commons.pool2.impl.GenericObjectPoolConfig poolConfig = new org.apache.commons.pool2.impl.GenericObjectPoolConfig();
-        poolConfig.setMaxTotal(16);
-        poolConfig.setMaxIdle(8);
-        poolConfig.setMinIdle(4);
+        // CHANGE 1: Set to 64 (slightly more than your max thread count of 60)
+        poolConfig.setMaxTotal(64);
+
+        // CHANGE 2: Increase Max Idle to keep connections ready
+        poolConfig.setMaxIdle(32);
+
+        // CHANGE 3: Keep a baseline of connections open so we don't constantly recreate them
+        poolConfig.setMinIdle(16);
+
+        // OPTIONAL: Fail fast if pool is exhausted (waits 2s by default, can be lowered)
+        poolConfig.setMaxWaitMillis(2000);
+
         return poolConfig;
     }
 }

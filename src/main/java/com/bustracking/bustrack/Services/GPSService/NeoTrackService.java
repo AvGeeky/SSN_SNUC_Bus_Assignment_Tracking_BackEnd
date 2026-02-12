@@ -24,6 +24,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class NeoTrackService {
@@ -42,7 +43,7 @@ public class NeoTrackService {
     private static final String API_URL = System.getenv("URL3");
     private static final String API_TOKEN = System.getenv("URL3_TOKEN");
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
-    private static final int BATCH_SIZE = 5;
+    private static final int BATCH_SIZE = 1;
 
 
     // IST Formatter for timestamp conversion
@@ -59,8 +60,11 @@ public class NeoTrackService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executorService = Executors.newCachedThreadPool();
-    int REFRESH_SECONDS_FAST = Integer.parseInt(System.getenv("REFRESH_SECONDS_FAST"));
-    int REFRESH_MINUTES_SLOW = Integer.parseInt(System.getenv("REFRESH_MINUTES_SLOW"));
+
+    int REFRESH_SECONDS_FAST = System.getenv("REFRESH_SECONDS_FAST") != null ?
+            Integer.parseInt(System.getenv("REFRESH_SECONDS_FAST")) : 10; // Default 10s
+    int REFRESH_MINUTES_SLOW = System.getenv("REFRESH_MINUTES_SLOW") != null ?
+            Integer.parseInt(System.getenv("REFRESH_MINUTES_SLOW")) : 15; // Default 15m
 
     private volatile boolean running = true;
 
@@ -234,11 +238,13 @@ public class NeoTrackService {
         long peakSleep = REFRESH_SECONDS_FAST * 1000L;         // 10 seconds
         long offPeakSleep = (long) REFRESH_MINUTES_SLOW * 60 * 1000; // 15 minutes
 
+        long jitter = ThreadLocalRandom.current().nextLong(0, 3000);
+
         boolean isMorningPeak = !now.isBefore(MORNING_START) && now.isBefore(MORNING_END);
         boolean isEveningPeak = !now.isBefore(EVENING_START) && now.isBefore(EVENING_END);
 
         if (isMorningPeak || isEveningPeak) {
-            return peakSleep;
+            return peakSleep+jitter;
         }
 
         // Logic to sleep until the next peak starts
