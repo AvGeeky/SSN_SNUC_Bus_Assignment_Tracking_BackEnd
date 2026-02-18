@@ -42,12 +42,12 @@ public class UserController {
 
     @GetMapping("/user/buses")
     public ResponseEntity<Map<String, Object>> buses(@RequestHeader(value = "Authorization", required = false)String authHeader){
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "E");
-            errorResponse.put("message", "Invalid Token Format");
-            return ResponseEntity.status(401).body(errorResponse);
-        }
+//        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+//            Map<String, Object> errorResponse = new HashMap<>();
+//            errorResponse.put("status", "E");
+//            errorResponse.put("message", "Invalid Token Format");
+//            return ResponseEntity.status(401).body(errorResponse);
+//        }
 
         Map<String, Object> response = new HashMap<>();
         try{
@@ -104,12 +104,12 @@ public class UserController {
 
     @GetMapping("/user/findUserRouteById")
     public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestHeader(value = "Authorization", required = false)String authHeader){
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "E");
-            errorResponse.put("message", "Invalid Token Format");
-            return ResponseEntity.status(401).body(errorResponse);
-        }
+//        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+//            Map<String, Object> errorResponse = new HashMap<>();
+//            errorResponse.put("status", "E");
+//            errorResponse.put("message", "Invalid Token Format");
+//            return ResponseEntity.status(401).body(errorResponse);
+//        }
 
         String jwt = authHeader.substring(7);
 
