@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -14,9 +15,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @Component
 public class BusTrackingThread implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(BusTrackingThread.class);
+    private final BusDataService dataService;
 
     @Autowired
-    private BusDataService dataService;
+    public BusTrackingThread(BusDataService dataService) {
+        this.dataService=dataService;
+    }
 
     private volatile boolean running = true;
 
@@ -36,12 +40,16 @@ public class BusTrackingThread implements CommandLineRunner {
     public void run(String... args) {
 
         Thread thread1 = new Thread(this::eventLoopApi1);
-        thread1.setName("API1-Worker");
+        thread1.setName("API1_JTRACK-Worker");
         thread1.start();
 
         Thread thread2 = new Thread(this::eventLoopApi2);
-        thread2.setName("API2-Worker");
+        thread2.setName("API2_PAIZO-Worker");
         thread2.start();
+
+        Thread thread3 = new Thread(this::eventLoopApi3);
+        thread2.setName("API3_NMT-Worker");
+        thread3.start();
     }
 
     private void eventLoopApi1() {
@@ -59,6 +67,17 @@ public class BusTrackingThread implements CommandLineRunner {
             handleSleep(status, "API 2");
         }
     }
+
+    private void eventLoopApi3() {
+        log.info("API 3 Worker Started...");
+        while (running) {
+            BusDataService.FetchStatus status = dataService.fetchAndPublishApiNMT();
+            handleSleep(status, "API 3");
+        }
+    }
+
+
+
 
     private void handleSleep(BusDataService.FetchStatus status, String workerName) {
         long sleepMillis;
