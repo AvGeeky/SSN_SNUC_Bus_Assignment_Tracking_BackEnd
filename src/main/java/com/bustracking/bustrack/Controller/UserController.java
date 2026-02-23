@@ -51,9 +51,14 @@ public class UserController {
 //            return ResponseEntity.status(401).body(errorResponse);
 //        }
 
+        String jwt = authHeader.substring(7);
+
+        //String userEmail = jwtUtil.extractEmail(jwt);
+        String type = jwtUtil.extractType(jwt);
+
         Map<String, Object> response = new HashMap<>();
         try{
-        if (busDataService.getAdminGlobalSwitch()) {
+        if (busDataService.getAdminGlobalSwitch() || type.equalsIgnoreCase("guest")) {
                 Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
                 Map<String, Object> cleanData = new HashMap<>();
                 for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
@@ -67,7 +72,7 @@ public class UserController {
                 return ResponseEntity.ok(response);
         }
         else {
-            String jwt = authHeader.substring(7);
+
             //String userEmail = jwtUtil.extractEmail(jwt);
             UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
             List<UserStopFinderDTO> data = riderService.findUserStop(riderId,false);
@@ -116,15 +121,21 @@ public class UserController {
         String jwt = authHeader.substring(7);
 
         //String userEmail = jwtUtil.extractEmail(jwt);
+        String type = jwtUtil.extractType(jwt);
+        Map<String,Object> response=new HashMap<>();
+
+        if (type.equalsIgnoreCase("guest")){
+            response.put("message","Guest does not have a scheduled bus. They can view any bus.");
+            return ResponseEntity.ok(response);
+        }
 
         UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
         List<UserStopFinderDTO> data = riderService.findUserStop(riderId,true);
 
          List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
-         //Calling it here only to cache it.
-        //riderService.findUserStop(riderId,true);
 
-         Map<String,Object> response=new HashMap<>();
+
+
          if(stops!=null){
              response.put("status","S");
              response.put("data",data);
@@ -161,12 +172,7 @@ public class UserController {
     }
     @PostMapping("/user/generateAccessCode")
     public ResponseEntity<Map<String,Object>>  generateAccessCode(@RequestHeader("Authorization") String authHeader){
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "E");
-            errorResponse.put("message", "Invalid Token Format");
-            return ResponseEntity.status(401).body(errorResponse);
-        }
+
 
         String jwt = authHeader.substring(7);
         String userEmail = jwtUtil.extractEmail(jwt);
@@ -180,12 +186,12 @@ public class UserController {
         Map<String,Object> response=new HashMap<>();
         if(done){
           response.put("status","S");
-          response.put("message","created the code sucesfully");
+          response.put("message","created the code successfully");
           return ResponseEntity.ok(response);
         }
         else{
             response.put("status","E");
-            response.put("message","code not created succesfullly");
+            response.put("message","code not created successfully");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
 
@@ -193,12 +199,7 @@ public class UserController {
     }
     @GetMapping("/user/getAcessCode")
     public ResponseEntity<Map<String,Object>> getAcessCode(@RequestHeader("Authorization") String authHeader){
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "E");
-            errorResponse.put("message", "Invalid Token Format");
-            return ResponseEntity.status(401).body(errorResponse);
-        }
+
 
         String jwt = authHeader.substring(7);
         String userEmail = jwtUtil.extractEmail(jwt);
@@ -207,12 +208,12 @@ public class UserController {
         if(data!=null){
              response.put("status","S");
              response.put("Code",data.getPassword());
-             response.put("message","data retireved succesfully");
+             response.put("message","data retrieved successfully");
              return ResponseEntity.ok(response);
         }
         else{
             response.put("status","E");
-            response.put("message","data not retireved succesfully");
+            response.put("message","data not retrieved successfully");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }

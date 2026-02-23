@@ -668,6 +668,25 @@ public class AdminController {
         }
 
     }
+
+    @GetMapping("/admin/getAllParentGuestLogins")
+    public ResponseEntity<Map<String,Object>> getAllParentGuestLogins(){
+        List<User_sessions> mappings= sessionsservice.getAllData();
+
+        Map<String,Object> response=new HashMap<>();
+        if(mappings!=null){
+            response.put("status","S");
+            response.put("result",mappings);
+            response.put("message","Data retrieved successfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Data not retrieved successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+
+    }
     @PostMapping("/admin/insertVehicleRnoMapping")
     public ResponseEntity<Map<String,Object>> insertVehicleRnoMapping(@RequestBody Map<String,Object> requestBody){
         Vehicle_rno_mapping mapping=Vehicle_rno_mapping.builder()
@@ -765,13 +784,12 @@ public class AdminController {
             response.put("status","S");
             response.put("username",username);
             response.put("password",code);
-            response.put("message","Code generated succesfully");
+            response.put("message","Code generated successfully");
             return ResponseEntity.ok(response);
-
           }
           else{
             response.put("status","E");
-            response.put("message","code not generated sucessfully");
+            response.put("message","Code not generated successfully");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
           }
       }
