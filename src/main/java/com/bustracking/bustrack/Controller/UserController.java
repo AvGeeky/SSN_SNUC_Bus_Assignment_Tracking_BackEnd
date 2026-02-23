@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.bustracking.bustrack.entities.User_sessions;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +29,17 @@ public class UserController {
     private final ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
     private final VehicleRnoService vehicleRnoService;
-
+    private final UserSessionsService sessionService;
     @Autowired
-     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper, VehicleRnoService vehicleRnoService){
+     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper, VehicleRnoService vehicleRnoService, UserSessionsService sessionService){
         this.riderService = riderService;
         this.jwtUtil = jwtUtil;
         this.busDataService = busDataService;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.vehicleRnoService = vehicleRnoService;
+
+        this.sessionService = sessionService;
     }
 
     @GetMapping("/user/buses")
@@ -157,7 +159,83 @@ public class UserController {
         }
 
     }
+    @PostMapping("/user/generateAccessCode")
+    public ResponseEntity<Map<String,Object>>  generateAccessCode(@RequestHeader("Authorization") String authHeader){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "E");
+            errorResponse.put("message", "Invalid Token Format");
+            return ResponseEntity.status(401).body(errorResponse);
+        }
 
+        String jwt = authHeader.substring(7);
+        String userEmail = jwtUtil.extractEmail(jwt);
+        String code = String.valueOf((int)(Math.random() * 900000) + 100000);
+        User_sessions session=User_sessions.builder()
+                .username(userEmail)
+                .password(code)
+                .loginType("parent")
+                .build();
+        Boolean done=sessionService.create_session(session);
+        Map<String,Object> response=new HashMap<>();
+        if(done){
+          response.put("status","S");
+          response.put("message","created the code sucesfully");
+          return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","code not created succesfullly");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+
+
+    }
+    @GetMapping("/user/getAcessCode")
+    public ResponseEntity<Map<String,Object>> getAcessCode(@RequestHeader("Authorization") String authHeader){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", "E");
+            errorResponse.put("message", "Invalid Token Format");
+            return ResponseEntity.status(401).body(errorResponse);
+        }
+
+        String jwt = authHeader.substring(7);
+        String userEmail = jwtUtil.extractEmail(jwt);
+        User_sessions data=sessionService.getsessionbyusername(userEmail);
+        Map<String,Object> response=new HashMap<>();
+        if(data!=null){
+             response.put("status","S");
+             response.put("Code",data.getPassword());
+             response.put("message","data retireved succesfully");
+             return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","data not retireved succesfully");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+    @PostMapping("/user/ParentLogin")
+    public ResponseEntity<Map<String,Object>> parentLogin(@RequestBody Map<String,Object> requestBody){
+        User_sessions session=sessionService.getsessionbyusername((String)requestBody.get("username"));
+        String code=(String) requestBody.get("password");
+        Map<String, Object> response = new HashMap<>();
+        if(session!=null && session.getPassword().equals(code)){
+            UUID riderId = riderService.getByEmail((String)requestBody.get("username")).getId();
+            String jwt = jwtUtil.generateTokenWithRiderId(riderId);
+            response.put("status", "S");
+            response.put("token", jwt);
+            response.put("message", "Parent login successful");
+            return ResponseEntity.ok(response);
+
+        }
+        else{
+            response.put("status", "E");
+            response.put("message", "Invalid code or username");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+    }
 
 
 }

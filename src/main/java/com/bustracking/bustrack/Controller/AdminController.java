@@ -750,6 +750,12 @@ public class AdminController {
               }
 
         }
+      @PostMapping("/admin/generateCode")
+       public ResponseEntity<Map<String,Object>> generateCode(@RequestBody Map<String,Object> requestBody){
+            String username=(String)requestBody.get("username");
+            Integer time_to_live=(Integer)requestBody.get("time_to_live");
+            String code=
+      }
 
      }
 
