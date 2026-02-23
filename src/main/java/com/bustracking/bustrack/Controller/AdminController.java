@@ -3,11 +3,7 @@ import com.bustracking.bustrack.Services.*;
 import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
-import com.bustracking.bustrack.entities.Rider;
-import com.bustracking.bustrack.entities.Stop;
-import com.bustracking.bustrack.entities.Bus;
-import com.bustracking.bustrack.entities.Vehicle_rno_mapping;
-import com.bustracking.bustrack.entities.Profile;
+import com.bustracking.bustrack.entities.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +27,12 @@ public class AdminController {
     private final ProfileService ProfileService;
     private final VehicleRnoService VehicleRnoService;
     private final BusDataService busDataService;
+    private final UserSessionsService sessionsservice;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
      @Autowired
-     public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService){
+     public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService, UserSessionsService sessionsservice){
          this.StopService=StopService;
          this.BusService = busService;
          this.RiderService = riderService;
@@ -44,6 +41,7 @@ public class AdminController {
          this.redisTemplate = redisTemplate;
          this.objectMapper = objectMapper;
          this.busDataService = busDataService;
+         this.sessionsservice = sessionsservice;
      }
 
     @GetMapping("/admin/buses")
@@ -754,7 +752,28 @@ public class AdminController {
        public ResponseEntity<Map<String,Object>> generateCode(@RequestBody Map<String,Object> requestBody){
             String username=(String)requestBody.get("username");
             Integer time_to_live=(Integer)requestBody.get("time_to_live");
-            String code=
+          String code = String.valueOf((int)(Math.random() * 900000) + 100000);
+          User_sessions session=User_sessions.builder()
+                  .username(username)
+                  .password(code)
+                  .loginType("guest")
+                  .ttlDays(time_to_live)
+                  .build();
+          boolean done=sessionsservice.create_session(session);
+          Map<String,Object> response=new HashMap<>();
+          if(done){
+            response.put("status","S");
+            response.put("username",username);
+            response.put("password",code);
+            response.put("message","Code generated succesfully");
+            return ResponseEntity.ok(response);
+
+          }
+          else{
+            response.put("status","E");
+            response.put("message","code not generated sucessfully");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+          }
       }
 
      }

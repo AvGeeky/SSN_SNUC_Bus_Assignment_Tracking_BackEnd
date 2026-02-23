@@ -36,6 +36,7 @@ public class JwtUtil {
         return Jwts.parserBuilder().setSigningKey(secretKey.getBytes()).build().parseClaimsJws(token).getBody();
     }
 
+
     Boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
@@ -58,6 +59,13 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String extractType(String token) {
+        return extractClaim(token, claims ->
+                java.util.Optional.ofNullable(claims.get("type"))
+                        .map(Object::toString)
+                        .orElse("default")
+        );
+    }
     public Boolean validateToken(String token, String email) {
         final String extractedEmail = extractEmail(token);
         return (extractedEmail.equals(email) && !isTokenExpired(token));
@@ -67,5 +75,15 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         claims.put("riderId", riderId.toString());
         return createToken(claims, riderId.toString());
+    }
+    public String generateGuestToken(String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("username", username);
+        claims.put("role", "guest");
+        return createToken(claims, username);
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> (String) claims.get("role"));
     }
 }

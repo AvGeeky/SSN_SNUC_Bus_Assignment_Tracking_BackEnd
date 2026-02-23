@@ -216,26 +216,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
-    @PostMapping("/user/ParentLogin")
-    public ResponseEntity<Map<String,Object>> parentLogin(@RequestBody Map<String,Object> requestBody){
-        User_sessions session=sessionService.getsessionbyusername((String)requestBody.get("username"));
-        String code=(String) requestBody.get("password");
-        Map<String, Object> response = new HashMap<>();
-        if(session!=null && session.getPassword().equals(code)){
-            UUID riderId = riderService.getByEmail((String)requestBody.get("username")).getId();
-            String jwt = jwtUtil.generateTokenWithRiderId(riderId);
-            response.put("status", "S");
-            response.put("token", jwt);
-            response.put("message", "Parent login successful");
-            return ResponseEntity.ok(response);
 
-        }
-        else{
-            response.put("status", "E");
-            response.put("message", "Invalid code or username");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-    }
 
 
 }
