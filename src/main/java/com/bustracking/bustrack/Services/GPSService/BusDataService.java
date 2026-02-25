@@ -7,13 +7,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.PostConstruct;
@@ -37,6 +37,11 @@ public class BusDataService {
     private String url2;
     private String urlNMTLogin;
     private String urlNMTTrack;
+    private String urlApiTATALogin;
+    private String urlApiTATATrack;
+    private String APITATA_CLIENTID;
+    private String APITATA_CLIENTSECRET;
+    private String APITATA_GRANTTYPE;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -54,8 +59,13 @@ public class BusDataService {
         this.url2 = System.getenv("URL2");
         this.urlNMTLogin = System.getenv("URLNMT_LOGIN");
         this.urlNMTTrack = System.getenv("URLNMT_TRACK");
+        this.urlApiTATALogin = System.getenv("URLAPITATA_LOGIN");
+        this.urlApiTATATrack = System.getenv("URLAPITATA_TRACK");
+        this.APITATA_CLIENTID = System.getenv("APITATA_CLIENTID");
+        this.APITATA_CLIENTSECRET = System.getenv("APITATA_CLIENTSECRET");
+        this.APITATA_GRANTTYPE = System.getenv("APITATA_GRANTTYPE");
 
-        if (this.url1 == null || this.url2 == null || this.urlNMTTrack ==null || this.urlNMTLogin ==null) {
+        if (this.url1 == null || this.url2 == null || this.urlNMTTrack ==null || this.urlNMTLogin ==null || this.urlApiTATALogin == null || this.urlApiTATATrack == null || this.APITATA_CLIENTID == null || this.APITATA_CLIENTSECRET == null || this.APITATA_GRANTTYPE == null) {
             throw new RuntimeException("FATAL: Env var URL is missing!");
         }
     }
@@ -199,7 +209,143 @@ public class BusDataService {
 
 
 
+    public boolean storeAuthTokenForApiTata() {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
+            MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+            map.add("client_id", APITATA_CLIENTID);
+            map.add("client_secret",APITATA_CLIENTSECRET);
+            map.add("grant_type", APITATA_GRANTTYPE);
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+
+            String response = restTemplate.postForObject(urlApiTATALogin, request, String.class);
+            JsonNode root = objectMapper.readTree(response);
+
+            if (root.has("access_token")) {
+                String token = root.get("access_token").asText();
+
+                // Save with 3500 minute TTL
+                redisTemplate.opsForValue().set("API4_TOKEN", token);
+                redisTemplate.expire("API4_TOKEN", Duration.ofMinutes(3500));
+
+                log.info("API 4 Login Successful. Token saved with 3500m TTL.");
+                return true;
+            } else {
+                log.error("API 4 Login failed: {}", response);
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("Error during API 4 login: {}", e.getMessage());
+            return false;
+        }
+    }
+    private String getOrRefreshApiTataToken() {
+        String token = redisTemplate.opsForValue().get("API4_TOKEN");
+        if (token == null) {
+            log.info("API 4 Token expired/missing (TTL out). Attempting lazy login...");
+            if (storeAuthTokenForApiTata()) {
+                return redisTemplate.opsForValue().get("API4_TOKEN");
+            }
+        }
+        return token;
+    }
+    public FetchStatus fetchAndPublishApiTata() {
+        String bearerToken = getOrRefreshApiTataToken();
+        if (bearerToken == null) return FetchStatus.FAILURE;
+
+        Map<String, String> batchData = new HashMap<>();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(bearerToken);
+            HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> responseEntity = restTemplate.exchange(
+                    urlApiTATATrack, HttpMethod.GET, requestEntity, String.class
+            );
+
+            parseApiTata(responseEntity.getBody(), batchData);
+
+            if (!batchData.isEmpty()) {
+                updateRedis(batchData);
+                log.debug("API 4 Success: Updated " + batchData.size() + " buses.");
+                return FetchStatus.SUCCESS;
+            } else {
+                return FetchStatus.FAILURE;
+            }
+        } catch (HttpClientErrorException.Unauthorized e) {
+            log.error("API 4 Token unauthorized early. Evicting from Redis.");
+            redisTemplate.delete("API4_TOKEN");
+            return FetchStatus.FAILURE;
+        } catch (Exception e) {
+            log.error("API 4 General Failure: " + e.getMessage());
+            return FetchStatus.FAILURE;
+        }
+    }
+
+    private void parseApiTata(String json, Map<String, String> batch) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+
+            JsonNode dataArray = root.get("vehicles");
+
+            if (dataArray != null && dataArray.isArray()) {
+                List<JsonNode> apiNodes = new ArrayList<>();
+                List<String> regNos = new ArrayList<>();
+
+                for (JsonNode node : dataArray) {
+
+                    if (node.has("registrationNumber")) {
+                        apiNodes.add(node);
+                        regNos.add(node.get("registrationNumber").asText().replace(" ", ""));
+                    }
+                }
+
+                if (regNos.isEmpty()) return;
+
+                List<Object> cachedData = redisTemplate.opsForHash().multiGet(REDIS_HASH_KEY, new ArrayList<>(regNos));
+
+                for (int i = 0; i < apiNodes.size(); i++) {
+                    JsonNode node = apiNodes.get(i);
+                    String regNo = regNos.get(i);
+
+                    double newLat = node.get("gpsLatitude").asDouble();
+                    double newLng = node.get("gpsLongitude").asDouble();
+
+                    String timestamp = LocalDateTime.now().format(DATE_FORMATTER);
+                    Object cachedJson = cachedData.get(i);
+
+                    if (cachedJson != null) {
+                        BusLocationDTO existingBus = objectMapper.readValue(cachedJson.toString(), BusLocationDTO.class);
+
+                        if (existingBus.getLatitude() == newLat && existingBus.getLongitude() == newLng) {
+                            timestamp = existingBus.getTimestamp();
+                        }
+                    }
+
+                    BusLocationDTO bus = BusLocationDTO.builder()
+                            .regNo(regNo)
+                            .latitude(newLat)
+                            .longitude(newLng)
+                            .speed(node.get("speed").asDouble())
+
+                            .odometer(node.hasNonNull("odometer") ? node.get("odometer").asText() : null)
+
+                            .ignition(node.path("ignitionOn").asBoolean() ? "ON" : "OFF")
+                            .timestamp(timestamp)
+                            .source("API_TATA")
+                            .build();
+
+                    batch.put(regNo, objectMapper.writeValueAsString(bus));
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to parse Tata API response", e);
+        }
+
+    }
     private void parseApiNMT(String json, Map<String, String> batch) {
         try {
             JsonNode root = objectMapper.readTree(json);

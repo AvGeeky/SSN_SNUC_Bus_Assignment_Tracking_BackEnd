@@ -50,6 +50,17 @@ public class BusTrackingThread implements CommandLineRunner {
         Thread thread3 = new Thread(this::eventLoopApi3);
         thread2.setName("API3_NMT-Worker");
         thread3.start();
+
+        Thread thread4 = new Thread(this::eventLoopApiTata);
+        thread4.setName("API4_NEW-Worker");
+        thread4.start();
+    }
+    private void eventLoopApiTata() {
+        log.info("API 4 Worker Started...");
+        while (running) {
+            BusDataService.FetchStatus status = dataService.fetchAndPublishApiTata();
+            handleSleepApiTata(status);
+        }
     }
 
     private void eventLoopApi1() {
@@ -78,7 +89,51 @@ public class BusTrackingThread implements CommandLineRunner {
 
 
 
+    private void handleSleepApiTata(BusDataService.FetchStatus status) {
+        long sleepMillis;
 
+        if (status == BusDataService.FetchStatus.SUCCESS) {
+            sleepMillis = calculateSleepDurationApiTata();
+        } else {
+            log.warn("API 4 failure. Retrying in 15s to respect rate limits.");
+            sleepMillis = 15000;
+        }
+
+        try {
+            Thread.sleep(sleepMillis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            running = false;
+        }
+    }
+    private long calculateSleepDurationApiTata() {
+        LocalTime now = LocalTime.now();
+        // Strict 65 seconds ( in ms) buffer for the 1m 5s rate limit
+        long peakSleep = 65000L;
+        long offPeakSleep = (long) REFRESH_MINUTES_SLOW * 60 * 1000;
+
+        boolean isMorningPeak = !now.isBefore(MORNING_START) && now.isBefore(MORNING_END);
+        boolean isEveningPeak = !now.isBefore(EVENING_START) && now.isBefore(EVENING_END);
+
+        if (isMorningPeak || isEveningPeak) {
+            return peakSleep;
+        }
+
+        // Off-Peak Logic (Same as before)
+        long millisUntilMorningStart = now.until(MORNING_START, ChronoUnit.MILLIS);
+        long millisUntilEveningStart = now.until(EVENING_START, ChronoUnit.MILLIS);
+
+        if (millisUntilMorningStart < 0) millisUntilMorningStart += Duration.ofDays(1).toMillis();
+        if (millisUntilEveningStart < 0) millisUntilEveningStart += Duration.ofDays(1).toMillis();
+
+        long nextPeakStart = Math.min(millisUntilMorningStart, millisUntilEveningStart);
+
+        if (nextPeakStart < offPeakSleep && nextPeakStart > 0) {
+            return nextPeakStart;
+        }
+
+        return offPeakSleep;
+    }
     private void handleSleep(BusDataService.FetchStatus status, String workerName) {
         long sleepMillis;
 
