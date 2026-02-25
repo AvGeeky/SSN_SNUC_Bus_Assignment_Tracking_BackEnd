@@ -27,6 +27,7 @@ public class UserSessionsService {
 //  }
   @Transactional
    public Boolean create_session(User_sessions session){
+        mapper.deleteByUsername(session.getUsername());
         int rows_affected=mapper.insertUser_sessions(session);
         return rows_affected>0;
   }

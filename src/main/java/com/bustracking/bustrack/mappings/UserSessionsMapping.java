@@ -10,8 +10,11 @@ public interface UserSessionsMapping {
     @Select("select * from user_sessions where username=#{username}")
     User_sessions getByusername(@Param("username")String username);
 
-    @Select("SELECT username, login_type, ttl_days,created_at,expires_at FROM user_sessions")
+    @Select("SELECT * FROM user_sessions ORDER BY created_at DESC")
     List<User_sessions> getAllData();
+
+    @Delete("delete from user_sessions where username=#{username}")
+    int deleteByUsername(@Param("username") String username);
 
     @Insert("insert into user_sessions(username,password,login_type,ttl_days)values(#{username},#{password},#{loginType},#{ttlDays})")
     int insertUser_sessions(User_sessions session);

@@ -7,7 +7,7 @@ set -e
 IMAGE_NAME="busapp"
 DOCKER_USER="saip2005"
 REPO_NAME="busapp"
-TAG="2.0.2"
+TAG="2.0.4"
 FULL_IMAGE_NAME="$DOCKER_USER/$REPO_NAME:$TAG"
 
 echo " Starting build process for $IMAGE_NAME..."
