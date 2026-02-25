@@ -58,7 +58,7 @@ public class RiderAuthInterceptor implements HandlerInterceptor {
             String email = claims.getSubject();
             String role = claims.get("role", String.class);
 
-            if (!"rider".equals(role)) {
+            if (!"rider".equals(role) && !"guest".equals(role)) {
                 log.warn("Non-rider user '{}' with role '{}' attempted to access rider path {}", email, role, request.getRequestURI());
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied: Requires rider role.");
                 return false;
