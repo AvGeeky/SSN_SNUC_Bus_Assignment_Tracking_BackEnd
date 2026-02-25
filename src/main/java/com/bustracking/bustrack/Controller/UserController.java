@@ -171,32 +171,46 @@ public class UserController {
 
     }
     @PostMapping("/user/generateAccessCode")
-    public ResponseEntity<Map<String,Object>>  generateAccessCode(@RequestHeader("Authorization") String authHeader){
-
-
+    public ResponseEntity<Map<String, Object>> generateAccessCode(@RequestHeader("Authorization") String authHeader) {
+        Map<String, Object> response = new HashMap<>();
         String jwt = authHeader.substring(7);
-        String userEmail = jwtUtil.extractEmail(jwt);
-        String code = String.valueOf((int)(Math.random() * 900000) + 100000);
-        User_sessions session=User_sessions.builder()
-                .username(userEmail)
-                .password(code)
-                .loginType("parent")
-                .build();
-        Boolean done=sessionService.create_session(session);
-        Map<String,Object> response=new HashMap<>();
-        if(done){
-          response.put("status","S");
-          response.put("message","created the code successfully");
-          return ResponseEntity.ok(response);
-        }
-        else{
-            response.put("status","E");
-            response.put("message","code not created successfully");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+
+        String type = jwtUtil.extractType(jwt);
+
+        if ("guest".equalsIgnoreCase(type)) { // if its not there for user default will be the type
+            response.put("status", "E");
+            response.put("message", "Not allowed for guest");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
         }
 
+        try {
+            String userEmail = jwtUtil.extractEmail(jwt);
+            String code = String.valueOf((int) (Math.random() * 900000) + 100000);
 
+            User_sessions session = User_sessions.builder()
+                    .username(userEmail)
+                    .password(code)
+                    .loginType("parent")
+                    .build();
+
+            boolean done = sessionService.create_session(session);
+
+            if (done) {
+                response.put("status", "S");
+                response.put("message", "created the code successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "E");
+                response.put("message", "Could not create session. It might already exist.");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+        } catch (Exception e) {
+            response.put("status", "E");
+            response.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
     }
+
     @GetMapping("/user/getAcessCode")
     public ResponseEntity<Map<String,Object>> getAcessCode(@RequestHeader("Authorization") String authHeader){
 
