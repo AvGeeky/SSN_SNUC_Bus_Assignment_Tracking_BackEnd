@@ -794,7 +794,240 @@ public class AdminController {
           }
       }
 
-     }
+
+
+      @PostMapping("/admin/setAlternateBusOverride")
+    public ResponseEntity<Map<String,Object>> setAlternateBusOverride(@RequestBody Map<String,Object> request){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            List<String> dates = (List<String>) request.get("dates");
+            String note = request.get("note").toString();
+
+            Map<String,List<String>> overrides =
+                    (Map<String,List<String>>) request.get("overrides");
+
+            if(dates == null || dates.isEmpty()){
+                response.put("status","E");
+                response.put("message","dates cannot be empty");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            for(String date : dates){
+
+                String noteKey = "note:alternate:" + date;
+                redisTemplate.opsForValue().set(noteKey, note);
+
+                for(Map.Entry<String,List<String>> entry : overrides.entrySet()){
+
+                    String oldBus = entry.getKey().replace(" ","");
+                    List<String> newBuses = entry.getValue();
+
+                    String redisKey = "bus:alternate:" + date + ":" + oldBus;
+
+                    redisTemplate.delete(redisKey);
+
+                    if(newBuses != null && !newBuses.isEmpty()){
+                        redisTemplate.opsForSet().add(redisKey, newBuses.toArray(new String[0]));
+                    }
+                }
+            }
+
+            response.put("status","S");
+            response.put("message","Alternate bus overrides stored");
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message",e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+
+    @PostMapping("/admin/setExamDatesOverride")
+    public ResponseEntity<Map<String,Object>> setExamDatesOverride(@RequestBody Map<String,Object> request){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            List<String> dates = (List<String>) request.get("dates");
+            String note = request.get("note").toString();
+
+            if(dates == null || dates.isEmpty()){
+                response.put("status","E");
+                response.put("message","dates cannot be empty");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            for(String date : dates){
+
+                redisTemplate.opsForSet().add("exam:dates", date);
+
+                String noteKey = "note:exam:" + date;
+                redisTemplate.opsForValue().set(noteKey, note);
+            }
+
+            response.put("status","S");
+            response.put("message","Exam override stored");
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message",e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @GetMapping("/admin/viewExamOverrides")
+    public ResponseEntity<Map<String,Object>> viewExamOverrides(){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            Set<String> dates = redisTemplate.opsForSet().members("exam:dates");
+
+            Map<String,String> result = new HashMap<>();
+
+            if(dates != null){
+                for(String date : dates){
+                    String note = redisTemplate.opsForValue().get("note:exam:" + date);
+                    result.put(date, note);
+                }
+            }
+
+            response.put("status","S");
+            response.put("data", result);
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @DeleteMapping("/admin/deleteExamOverrides")
+    public ResponseEntity<Map<String,Object>> deleteExamOverrides(@RequestBody Map<String,Object> request){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            List<String> dates = (List<String>) request.get("dates");
+
+            if(dates == null || dates.isEmpty()){
+                response.put("status","E");
+                response.put("message","dates cannot be empty");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            for(String date : dates){
+
+                redisTemplate.opsForSet().remove("exam:dates", date);
+                redisTemplate.delete("note:exam:" + date);
+            }
+
+            response.put("status","S");
+            response.put("message","Exam overrides deleted");
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @GetMapping("/admin/viewAlternateBusOverrides")
+    public ResponseEntity<Map<String,Object>> viewAlternateBusOverrides(){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            Set<String> keys = redisTemplate.keys("bus:alternate:*");
+
+            Map<String,Object> result = new HashMap<>();
+
+            if(keys != null){
+
+                for(String key : keys){
+
+                    Set<String> buses = redisTemplate.opsForSet().members(key);
+
+                    String[] parts = key.split(":");
+
+                    String date = parts[2];
+                    String oldBus = parts[3];
+
+                    Map<String,Object> entry = new HashMap<>();
+                    entry.put("alternateBuses", buses);
+                    entry.put("note", redisTemplate.opsForValue().get("note:alternate:" + date));
+
+                    result.put(date + ":" + oldBus, entry);
+                }
+            }
+
+            response.put("status","S");
+            response.put("data", result);
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @DeleteMapping("/admin/deleteAlternateBusOverride")
+    public ResponseEntity<Map<String,Object>> deleteAlternateBusOverride(@RequestBody Map<String,Object> request){
+
+        Map<String,Object> response = new HashMap<>();
+
+        try{
+
+            String date = request.get("date").toString();
+            String bus = request.get("bus").toString().replace(" ","");
+
+            String key = "bus:alternate:" + date + ":" + bus;
+
+            redisTemplate.delete(key);
+
+            response.put("status","S");
+            response.put("message","Alternate bus override deleted");
+
+            return ResponseEntity.ok(response);
+
+        }catch(Exception e){
+
+            response.put("status","E");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+}
 
 
 

@@ -38,39 +38,11 @@ public class ProfileService {
     @Autowired
     BusMapping busMapper;
     @Autowired
-     VehicleRnoMapping vehiclernoMapper;
-
+    VehicleRnoMapping vehiclernoMapper;
     @Autowired
     RiderMapping riderMapping;
 
 
-    /*
-    private static final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
-
-    static {
-        ROUTE_TO_BUS_NUMBER_MAP.put("1", "TN19BD8142");
-        ROUTE_TO_BUS_NUMBER_MAP.put("2", "TN11BT2470");
-        ROUTE_TO_BUS_NUMBER_MAP.put("3", "TN19BD8112");
-        ROUTE_TO_BUS_NUMBER_MAP.put("4", "TN19BD9972");
-        ROUTE_TO_BUS_NUMBER_MAP.put("4A", "TN11BT2473");
-        ROUTE_TO_BUS_NUMBER_MAP.put("5", "TN19BD8111");
-        ROUTE_TO_BUS_NUMBER_MAP.put("6", "TN11BS7445");
-        ROUTE_TO_BUS_NUMBER_MAP.put("7", "TN11BT2401");
-        ROUTE_TO_BUS_NUMBER_MAP.put("8", "TN11BS7430");
-        ROUTE_TO_BUS_NUMBER_MAP.put("9", "TN11BS7470");
-        ROUTE_TO_BUS_NUMBER_MAP.put("9A", "TN19BD8125");
-        ROUTE_TO_BUS_NUMBER_MAP.put("9B", "TN19BD9905");
-        ROUTE_TO_BUS_NUMBER_MAP.put("10", "TN11BS7468");
-        ROUTE_TO_BUS_NUMBER_MAP.put("11", "TN11BS7458");
-        ROUTE_TO_BUS_NUMBER_MAP.put("12", "TN19BD8104");
-        ROUTE_TO_BUS_NUMBER_MAP.put("13", "TN11BS7464");
-        ROUTE_TO_BUS_NUMBER_MAP.put("14", "TN19BD8106");
-        ROUTE_TO_BUS_NUMBER_MAP.put("24", "TN11BS7484");
-        ROUTE_TO_BUS_NUMBER_MAP.put("16", "TN19BD9907");
-        ROUTE_TO_BUS_NUMBER_MAP.put("18", "TN19BD9986");
-    }
-
-     */
     private final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
     @PostConstruct
     private void initMap() {

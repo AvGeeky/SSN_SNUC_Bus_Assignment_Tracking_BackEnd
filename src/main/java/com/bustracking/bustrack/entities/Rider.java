@@ -17,7 +17,7 @@ public class Rider {
     private String department;
     private String college;
     private String email;
-    private UUID homeStopId;
+    private UUID homeStopId; // in db it is home_stop_id
     private Instant createdAt;
     private String digitalId;
 }

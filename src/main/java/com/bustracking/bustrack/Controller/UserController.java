@@ -13,10 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.bustracking.bustrack.entities.User_sessions;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.time.LocalTime;
+import java.util.*;
 
 @RestController
 public class UserController {
@@ -42,115 +41,192 @@ public class UserController {
         this.sessionService = sessionService;
     }
 
-    @GetMapping("/user/buses")
-    public ResponseEntity<Map<String, Object>> buses(@RequestHeader(value = "Authorization", required = false)String authHeader){
-//        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-//            Map<String, Object> errorResponse = new HashMap<>();
-//            errorResponse.put("status", "E");
-//            errorResponse.put("message", "Invalid Token Format");
-//            return ResponseEntity.status(401).body(errorResponse);
-//        }
-
-        String jwt = authHeader.substring(7);
-
-        //String userEmail = jwtUtil.extractEmail(jwt);
-        String type = jwtUtil.extractType(jwt);
-
-        Map<String, Object> response = new HashMap<>();
-        try{
-        if (busDataService.getAdminGlobalSwitch() || type.equalsIgnoreCase("guest")) {
-                Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
-                Map<String, Object> cleanData = new HashMap<>();
-                for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
-                    String key = (String) entry.getKey();
-                    String jsonString = (String) entry.getValue();
-                    cleanData.put(key, objectMapper.readTree(jsonString));
-                }
-                response.put("status", "success");
-                response.put("message", "All live buses retrieved");
-                response.put("data", cleanData);
-                return ResponseEntity.ok(response);
-        }
-        else {
-
-            //String userEmail = jwtUtil.extractEmail(jwt);
-            UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
-            List<UserStopFinderDTO> data = riderService.findUserStop(riderId,false);
-            List<String> busPlateNumbers = data.stream()
-                    .map(UserStopFinderDTO::getBusPlateNumber)
-                    .distinct()
-                    .toList();
-            Map<String, Object> busesData = new HashMap<>();
-            for (String busNo : busPlateNumbers) {
-                String normalizedKey = busNo.replace(" ", "");
-                Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedKey);
-                if (rawJson != null) {
-                    busesData.put(busNo, objectMapper.readTree(rawJson.toString()));
-                } else {
-                    busesData.put(busNo, null);
-                }
-            }
-            if (busesData.isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "No buses found or currently offline");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            } else {
-                response.put("status", "success");
-                response.put("data", busesData);
-                return ResponseEntity.ok(response);
-            }
-        }
-
-
-        } catch (Exception e) {
-            response.put("status", "error");
-            response.put("message", "Internal Server Error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
     @GetMapping("/user/findUserRouteById")
-    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestHeader(value = "Authorization", required = false)String authHeader){
-//        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-//            Map<String, Object> errorResponse = new HashMap<>();
-//            errorResponse.put("status", "E");
-//            errorResponse.put("message", "Invalid Token Format");
-//            return ResponseEntity.status(401).body(errorResponse);
-//        }
+    public ResponseEntity<Map<String,Object>> findUserRouteById(@RequestHeader(value = "Authorization", required = false) String authHeader){
 
         String jwt = authHeader.substring(7);
-
-        //String userEmail = jwtUtil.extractEmail(jwt);
         String type = jwtUtil.extractType(jwt);
-        Map<String,Object> response=new HashMap<>();
+
+        Map<String,Object> response = new HashMap<>();
 
         if (type.equalsIgnoreCase("guest")){
             response.put("message","Guest does not have a scheduled bus. They can view any bus.");
             return ResponseEntity.ok(response);
         }
 
-        UUID riderId=UUID.fromString(jwtUtil.extractRiderId(jwt));
-        List<UserStopFinderDTO> data = riderService.findUserStop(riderId,true);
+        UUID riderId = UUID.fromString(jwtUtil.extractRiderId(jwt));
 
-         List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
+        try {
 
+            String today = java.time.LocalDate.now().toString();
 
+            Boolean isExamDay = redisTemplate.opsForSet().isMember("exam:dates", today);
 
-         if(stops!=null){
-             response.put("status","S");
-             response.put("data",data);
-             response.put("busStops",stops);
-             response.put("studentsInBus",riderService.studentsInUsersBus(riderId));
-             response.put("message","User stop details retrieved successfully");
-             return ResponseEntity.ok(response);
-         }
-         else{
-          response.put("status","E");
-          response.put("message","User stop details not found / Unauthorized access");
-          return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            if (Boolean.TRUE.equals(isExamDay)) {
+                String note = redisTemplate.opsForValue().get("note:exam:" + today);
+                if (note != null) response.put("note_e", note);
+            }
 
-         }
+            List<UserStopFinderDTO> data = riderService.findUserStop(riderId, true);
+            List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
+
+            /*
+            CHECK FOR ALTERNATE BUS NOTE
+            */
+            if(data != null && !data.isEmpty()){
+
+                String assignedBus = data.get(0).getBusPlateNumber().replace(" ","");
+                //System.out.println(assignedBus);
+                String overrideKey = "bus:alternate:" + today + ":" + assignedBus;
+
+                Set<String> alternates = redisTemplate.opsForSet().members(overrideKey);
+                //System.out.println(alternates);
+                if(alternates != null && !alternates.isEmpty()){
+                    String note = redisTemplate.opsForValue().get("note:alternate:" + today);
+                    if(note != null) response.put("note_a", note);
+                }
+            }
+
+            if (stops != null) {
+
+                response.put("status","S");
+                response.put("data",data);
+                response.put("busStops",stops);
+                response.put("studentsInBus",riderService.studentsInUsersBus(riderId));
+                response.put("message","User stop details retrieved successfully");
+
+                return ResponseEntity.ok(response);
+
+            } else {
+
+                response.put("status","E");
+                response.put("message","User stop details not found / Unauthorized access");
+
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+        } catch (Exception e) {
+
+            response.put("status","E");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
+
+    @GetMapping("/user/buses")
+    public ResponseEntity<Map<String, Object>> buses(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        String jwt = authHeader.substring(7);
+        String type = jwtUtil.extractType(jwt);
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+
+            String today = java.time.LocalDate.now().toString();
+            Boolean isExamDay = redisTemplate.opsForSet().isMember("exam:dates", today);
+            boolean isExamDayAndTime = false;
+            if (Boolean.TRUE.equals(isExamDay)){
+                LocalTime now = LocalTime.now();
+                LocalTime start = LocalTime.of(11, 0);
+                LocalTime end = LocalTime.of(19, 0);
+
+                isExamDayAndTime = !now.isBefore(start) && !now.isAfter(end);
+            }
+
+
+            // GLOBAL VIEW CONDITIONS
+            if (busDataService.getAdminGlobalSwitch() || type.equalsIgnoreCase("guest") || isExamDayAndTime) {
+
+                Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
+                Map<String, Object> cleanData = new HashMap<>();
+
+                for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
+                    String key = (String) entry.getKey();
+                    String jsonString = (String) entry.getValue();
+                    cleanData.put(key, objectMapper.readTree(jsonString));
+                }
+
+                response.put("status", "success");
+                response.put("message", "All live buses retrieved");
+                response.put("data", cleanData);
+
+//                if (Boolean.TRUE.equals(isExamDay)) {
+//                    String note = redisTemplate.opsForValue().get("note:exam:" + today);
+//                    if (note != null) response.put("note", note);
+//                }
+
+                return ResponseEntity.ok(response);
+            }
+
+            // USER RESTRICTED VIEW
+            UUID riderId = UUID.fromString(jwtUtil.extractRiderId(jwt));
+
+            List<UserStopFinderDTO> data = riderService.findUserStop(riderId, false);
+            if (data == null || data.isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "No buses assigned to this user");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+            List<String> userBuses = data.stream()
+                    .map(UserStopFinderDTO::getBusPlateNumber)
+                    .distinct()
+                    .toList();
+
+
+            Set<String> busesToFetch = new HashSet<>(userBuses);
+
+            // CHECK FOR ALTERNATE BUS OVERRIDES
+            for (String bus : userBuses) {
+
+                String normalizedBus = bus.replace(" ", "");
+                String overrideKey = "bus:alternate:" + today + ":" + normalizedBus;
+
+                Set<String> alternates = redisTemplate.opsForSet().members(overrideKey);
+                //String altNote = redisTemplate.opsForValue().get("note:alternate:" + today);
+
+                if (alternates != null && !alternates.isEmpty()) {
+                    busesToFetch.addAll(alternates);
+                   // if (altNote != null) response.put("note", altNote);
+                }
+            }
+
+            Map<String, Object> busesData = new HashMap<>();
+
+            for (String busNo : busesToFetch) {
+
+                String normalizedKey = busNo.replace(" ", "");
+                Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedKey);
+
+                if (rawJson != null) {
+                    busesData.put(busNo, objectMapper.readTree(rawJson.toString()));
+                } else {
+                    busesData.put(busNo, null);
+                }
+            }
+
+            if (busesData.isEmpty()) {
+
+                response.put("status", "error");
+                response.put("message", "No buses found or currently offline");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+
+            } else {
+
+                response.put("status", "success");
+                response.put("data", busesData);
+                return ResponseEntity.ok(response);
+            }
+
+        } catch (Exception e) {
+
+            response.put("status", "error");
+            response.put("message", "Internal Server Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
 
     @GetMapping("/user/getAllRnoVehicleMapping")
     public ResponseEntity<Map<String,Object>> getrnoVehicleMapping(){
@@ -198,6 +274,7 @@ public class UserController {
             if (done) {
                 response.put("status", "S");
                 response.put("message", "created the code successfully");
+                response.put("code", code);
                 return ResponseEntity.ok(response);
             } else {
                 response.put("status", "E");
