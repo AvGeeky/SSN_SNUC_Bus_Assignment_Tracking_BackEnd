@@ -176,7 +176,7 @@ public class UserController {
 
 
             Set<String> busesToFetch = new HashSet<>(userBuses);
-
+            boolean isAlternate = false;
             // CHECK FOR ALTERNATE BUS OVERRIDES
             for (String bus : userBuses) {
 
@@ -187,8 +187,14 @@ public class UserController {
                 //String altNote = redisTemplate.opsForValue().get("note:alternate:" + today);
 
                 if (alternates != null && !alternates.isEmpty()) {
+                    isAlternate = true;
                     busesToFetch.addAll(alternates);
                    // if (altNote != null) response.put("note", altNote);
+                }
+            }
+            if (isAlternate){
+                for (String bus : userBuses) {
+                    busesToFetch.remove( bus.replace(" ", ""));
                 }
             }
 
