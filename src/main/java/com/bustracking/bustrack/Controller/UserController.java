@@ -176,7 +176,7 @@ public class UserController {
 
 
             Set<String> busesToFetch = new HashSet<>(userBuses);
-            boolean isAlternate = false;
+            //boolean isAlternate = false;
             // CHECK FOR ALTERNATE BUS OVERRIDES
             for (String bus : userBuses) {
 
@@ -187,16 +187,16 @@ public class UserController {
                 //String altNote = redisTemplate.opsForValue().get("note:alternate:" + today);
 
                 if (alternates != null && !alternates.isEmpty()) {
-                    isAlternate = true;
+                    //isAlternate = true;
                     busesToFetch.addAll(alternates);
                    // if (altNote != null) response.put("note", altNote);
                 }
             }
-            if (isAlternate){
-                for (String bus : userBuses) {
-                    busesToFetch.remove( bus.replace(" ", ""));
-                }
-            }
+//            if (isAlternate){
+//                for (String bus : userBuses) {
+//                    busesToFetch.remove( bus.replace(" ", ""));
+//                }
+//            }
 
             Map<String, Object> busesData = new HashMap<>();
 
@@ -299,9 +299,19 @@ public class UserController {
 
 
         String jwt = authHeader.substring(7);
+        String type = jwtUtil.extractType(jwt);
+
+        Map<String,Object> response = new HashMap<>();
+
+        if (type.equalsIgnoreCase("guest")){
+            response.put("message","Guest Can Not Have Access Code");
+            return ResponseEntity.ok(response);
+        }
+
         String userEmail = jwtUtil.extractEmail(jwt);
+
         User_sessions data=sessionService.getsessionbyusername(userEmail);
-        Map<String,Object> response=new HashMap<>();
+
         if(data!=null){
              response.put("status","S");
              response.put("Code",data.getPassword());
