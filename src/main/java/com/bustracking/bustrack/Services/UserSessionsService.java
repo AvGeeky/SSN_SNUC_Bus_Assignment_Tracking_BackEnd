@@ -32,6 +32,11 @@ public class UserSessionsService {
         return rows_affected>0;
   }
   @Transactional
+  public Boolean delete_session(String username){
+    int rows_affected = mapper.deleteByUsername(username);
+    return rows_affected>0;
+  }
+  @Transactional
     public Boolean update_session(UUID id,String username,String password,String login_type){
       int rows_affected=mapper.updateUser_sesions(id,username,password,login_type);
       return rows_affected>0;

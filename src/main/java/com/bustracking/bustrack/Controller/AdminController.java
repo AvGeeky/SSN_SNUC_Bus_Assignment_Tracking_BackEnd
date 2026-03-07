@@ -793,6 +793,24 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
           }
       }
+    @DeleteMapping("/admin/deleteCode")
+    public ResponseEntity<Map<String,Object>> deleteCode(@RequestBody Map<String,Object> requestBody){
+        String username=(String)requestBody.get("username");
+
+        boolean done = sessionsservice.delete_session(username);
+        Map<String,Object> response=new HashMap<>();
+        if(done){
+            response.put("status","S");
+            response.put("username",username);
+            response.put("message","Code deleted successfully");
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","Code not deleted successfully");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
 
 
 
