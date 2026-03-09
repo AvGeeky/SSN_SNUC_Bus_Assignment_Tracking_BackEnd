@@ -192,6 +192,7 @@ The platform is deployed **on-premise within university infrastructure**, provid
 - **Full operational control over infrastructure**
 - **Secure integration with campus systems**
 
+- Deployment NGINX, Docker Compose file and other configurations HAVE NOT BEEN pushed for security purposes. Cradle docker compose has been pushed for building the jar file to dockerhub. Any other configs are not the deployment config. 
 ---
 
 ## 📈 Impact
