@@ -35,7 +35,11 @@ build/
 ### Environment files ###
 .env
 .env.*
+.sh
 
 application.yml
 
 application-*.yml
+/Deployment/Docker-BusApp/
+/Deployment/Docker-Cradle/
+

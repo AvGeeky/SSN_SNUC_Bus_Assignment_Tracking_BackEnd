@@ -2,8 +2,8 @@ services:
 
   redis:
     build:
-      context: ./redis
-      dockerfile: Dockerfile
+      context: redis
+      dockerfile: redis/Dockerfile
       args:
         REDIS_PASSWORD: ${REDIS_PASSWORD}
     container_name: redis-development
