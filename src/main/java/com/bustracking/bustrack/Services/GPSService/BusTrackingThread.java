@@ -52,14 +52,27 @@ public class BusTrackingThread implements CommandLineRunner {
         thread3.start();
 
         Thread thread4 = new Thread(this::eventLoopApiTata);
-        thread4.setName("API4_NEW-Worker");
+        thread4.setName("API4_Tata-Worker");
         thread4.start();
+
+        Thread thread5 = new Thread(this::eventLoopGJTravels);
+        thread5.setName("API5_GJ_TRAVELS-Worker");
+        thread5.start();
     }
+
     private void eventLoopApiTata() {
         log.info("API 4 Worker Started...");
         while (running) {
             BusDataService.FetchStatus status = dataService.fetchAndPublishApiTata();
-            handleSleepApiTata(status);
+            handleSleepApiOneMinute(status);
+        }
+    }
+
+    private void eventLoopGJTravels() {
+        log.info("API GJ TRAVELS Worker Started...");
+        while (running) {
+            BusDataService.FetchStatus status = dataService.fetchAndPublishApi3GJTravels();
+            handleSleepApiOneMinute(status);
         }
     }
 
@@ -89,13 +102,13 @@ public class BusTrackingThread implements CommandLineRunner {
 
 
 
-    private void handleSleepApiTata(BusDataService.FetchStatus status) {
+    private void handleSleepApiOneMinute(BusDataService.FetchStatus status) {
         long sleepMillis;
 
         if (status == BusDataService.FetchStatus.SUCCESS) {
-            sleepMillis = calculateSleepDurationApiTata();
+            sleepMillis = calculateSleepDurationApiOneMinute();
         } else {
-            log.warn("API 4 failure. Retrying in 15s to respect rate limits.");
+            log.warn("API GJ/TATA 1 Minute Poll Interval failure. Retrying in 15s to respect rate limits.");
             sleepMillis = 15000;
         }
 
@@ -106,7 +119,7 @@ public class BusTrackingThread implements CommandLineRunner {
             running = false;
         }
     }
-    private long calculateSleepDurationApiTata() {
+    private long calculateSleepDurationApiOneMinute() {
         LocalTime now = LocalTime.now();
         // Strict 65 seconds ( in ms) buffer for the 1m 5s rate limit
         long peakSleep = 65000L;

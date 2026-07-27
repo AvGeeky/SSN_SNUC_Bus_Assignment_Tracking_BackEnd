@@ -70,17 +70,17 @@ public class UserController {
             List<UserStopFinderDTO> data = riderService.findUserStop(riderId, true);
             List<BusRouteStopDTO> stops = riderService.findFullRouteForRider(riderId);
 
-            /*
-            CHECK FOR ALTERNATE BUS NOTE
-            */
+
             if(data != null && !data.isEmpty()){
 
                 String assignedBus = data.get(0).getBusPlateNumber().replace(" ","");
-                //System.out.println(assignedBus);
+
                 String overrideKey = "bus:alternate:" + today + ":" + assignedBus;
 
                 Set<String> alternates = redisTemplate.opsForSet().members(overrideKey);
-                //System.out.println(alternates);
+                  /*
+                CHECK FOR ALTERNATE BUS NOTE
+                */
                 if(alternates != null && !alternates.isEmpty()){
                     String note = redisTemplate.opsForValue().get("note:alternate:" + today);
                     if(note != null) response.put("note_a", note);
@@ -129,8 +129,8 @@ public class UserController {
             boolean isExamDayAndTime = false;
             if (Boolean.TRUE.equals(isExamDay)){
                 LocalTime now = LocalTime.now();
-                LocalTime start = LocalTime.of(11, 0);
-                LocalTime end = LocalTime.of(19, 0);
+                LocalTime start = LocalTime.of(9, 0);
+                LocalTime end = LocalTime.of(16, 30);
 
                 isExamDayAndTime = !now.isBefore(start) && !now.isAfter(end);
             }
@@ -152,10 +152,7 @@ public class UserController {
                 response.put("message", "All live buses retrieved");
                 response.put("data", cleanData);
 
-//                if (Boolean.TRUE.equals(isExamDay)) {
-//                    String note = redisTemplate.opsForValue().get("note:exam:" + today);
-//                    if (note != null) response.put("note", note);
-//                }
+
 
                 return ResponseEntity.ok(response);
             }
@@ -176,7 +173,7 @@ public class UserController {
 
 
             Set<String> busesToFetch = new HashSet<>(userBuses);
-            //boolean isAlternate = false;
+
             // CHECK FOR ALTERNATE BUS OVERRIDES
             for (String bus : userBuses) {
 
@@ -184,19 +181,14 @@ public class UserController {
                 String overrideKey = "bus:alternate:" + today + ":" + normalizedBus;
 
                 Set<String> alternates = redisTemplate.opsForSet().members(overrideKey);
-                //String altNote = redisTemplate.opsForValue().get("note:alternate:" + today);
 
                 if (alternates != null && !alternates.isEmpty()) {
-                    //isAlternate = true;
+
                     busesToFetch.addAll(alternates);
-                   // if (altNote != null) response.put("note", altNote);
+
                 }
             }
-//            if (isAlternate){
-//                for (String bus : userBuses) {
-//                    busesToFetch.remove( bus.replace(" ", ""));
-//                }
-//            }
+
 
             Map<String, Object> busesData = new HashMap<>();
 

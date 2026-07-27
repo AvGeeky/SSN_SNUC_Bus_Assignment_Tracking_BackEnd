@@ -42,6 +42,7 @@ public class BusDataService {
     private String APITATA_CLIENTID;
     private String APITATA_CLIENTSECRET;
     private String APITATA_GRANTTYPE;
+    private String URL3_GJ;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -57,6 +58,7 @@ public class BusDataService {
     private void initialiseEnvs() {
         this.url1 = System.getenv("URL1");
         this.url2 = System.getenv("URL2");
+        this.URL3_GJ = System.getenv("URL3_GJ");
         this.urlNMTLogin = System.getenv("URLNMT_LOGIN");
         this.urlNMTTrack = System.getenv("URLNMT_TRACK");
         this.urlApiTATALogin = System.getenv("URLAPITATA_LOGIN");
@@ -86,6 +88,25 @@ public class BusDataService {
             }
         } catch (Exception e) {
             log.error("API 1 Failed: " + e.getMessage());
+            return FetchStatus.FAILURE;
+        }
+    }
+    public FetchStatus fetchAndPublishApi3GJTravels() {
+        Map<String, String> batchData = new HashMap<>();
+        try {
+            String response = restTemplate.getForObject(URL3_GJ, String.class);
+            parseApi3GJ(response, batchData);
+
+            if (!batchData.isEmpty()) {
+                updateRedis(batchData);
+                log.debug("API 3 GJ Success: Updated " + batchData.size() + " buses.");
+                return FetchStatus.SUCCESS;
+            } else {
+                log.warn("API 3 GJ Empty Data");
+                return FetchStatus.FAILURE;
+            }
+        } catch (Exception e) {
+            log.error("API 3 GJ Failed: " + e.getMessage());
             return FetchStatus.FAILURE;
         }
     }
@@ -418,6 +439,26 @@ public class BusDataService {
                 }
             }
         } catch (Exception e) { log.error("Failed to parse API 1 response", e); }
+    }
+
+    private void parseApi3GJ(String json, Map<String, String> batch) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode dataArray = root.get("data");
+            if (dataArray != null && dataArray.isArray()) {
+                for (JsonNode node : dataArray) {
+                    BusLocationDTO bus = BusLocationDTO.builder()
+                            .regNo(node.get("vehicle_number").asText().replace(" ", ""))
+                            .latitude(node.get("lat_message").asDouble())
+                            .longitude(node.get("lon_message").asDouble())
+                            .speed(node.get("speed").asDouble())
+                            .timestamp(node.get("gps_datetime").asText())
+                            .source("API_3GJ")
+                            .build();
+                    batch.put(bus.getRegNo(), objectMapper.writeValueAsString(bus));
+                }
+            }
+        } catch (Exception e) { log.error("Failed to parse API 3 GJ response", e); }
     }
 
     private void parseApi2(String json, Map<String, String> batch) {
