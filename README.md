@@ -1,5 +1,5 @@
 
-## 🚌 Real-Time Bus Tracking Platform
+## Real-Time Bus Tracking Platform
 **Official deployment for SSN College of Engineering & Shiv Nadar University Chennai**  
 *Production system serving students and faculty | 2025*
 
@@ -9,7 +9,7 @@ A high-performance real-time mobility tracking backend designed to support thous
 
 ---
 
-# 🚀 Key Highlights
+# Key Highlights
 
 - **3,000+ concurrent users** supported during peak traffic hours
 - **Sub-50ms live location propagation** from ingestion → map render
@@ -22,7 +22,7 @@ A high-performance real-time mobility tracking backend designed to support thous
 
 ---
 
-# 🏗 System Architecture
+# System Architecture
 
 ```text
                  +----------------------+
@@ -110,7 +110,7 @@ These techniques ensure the system remains stable even when **thousands of users
 
 ---
 
-## 📊 Observability & Reliability
+## Observability & Reliability
 
 The system runs **entirely on university infrastructure** with full operational visibility.
 
@@ -171,7 +171,7 @@ All shared state is **externalized into Redis**.
 ---
 
 ## Tech Stack
-## 🧰 Tech Stack
+## Tech Stack
 
 - **Java**
 - **Spring Boot**
@@ -184,7 +184,7 @@ All shared state is **externalized into Redis**.
 
 ---
 
-## 📌 Deployment
+## Deployment
 
 The platform is deployed **on-premise within university infrastructure**, providing:
 
