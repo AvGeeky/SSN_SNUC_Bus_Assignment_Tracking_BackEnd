@@ -4,6 +4,7 @@ import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
 import com.bustracking.bustrack.entities.*;
+import com.bustracking.bustrack.util.RegNoNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +66,7 @@ public class AdminController {
                 return ResponseEntity.ok(response);
             }
             else {
-                String normalizedKey = busNo.replace(" ", "");
+                String normalizedKey = RegNoNormalizer.normalize(busNo);
                 Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedKey);
                 if (rawJson != null) {
                     response.put("status", "success");
@@ -840,7 +841,7 @@ public class AdminController {
 
                 for(Map.Entry<String,List<String>> entry : overrides.entrySet()){
 
-                    String oldBus = entry.getKey().replace(" ","");
+                    String oldBus = RegNoNormalizer.normalize(entry.getKey());
                     List<String> newBuses = entry.getValue();
 
                     String redisKey = "bus:alternate:" + date + ":" + oldBus;
@@ -1025,7 +1026,7 @@ public class AdminController {
         try{
 
             String date = request.get("date").toString();
-            String bus = request.get("bus").toString().replace(" ","");
+            String bus = RegNoNormalizer.normalize(request.get("bus").toString());
 
             String key = "bus:alternate:" + date + ":" + bus;
 

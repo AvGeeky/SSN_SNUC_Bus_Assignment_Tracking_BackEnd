@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Inherit Spring Boot's default console logging patterns -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!-- Pull application name from application.properties -->
+    <springProperty scope="context" name="springAppName" source="spring.application.name" defaultValue="spring-backend"/>
+
+    <!-- Define the Loki URL, defaulting to localhost but overridable via environment variables in Docker -->
+    <property name="LOKI_URL" value="${LOKI_URL:-http://localhost:3100/loki/api/v1/push}"/>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}</url>
+        </http>
+        <format>
+            <!-- Labels are how you query in Grafana (e.g., {app="invente-backend", level="ERROR"}) -->
+            <label>
+                <pattern>app=${springAppName},host=${HOSTNAME},level=%level</pattern>
+            </label>
+            <message>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+    </appender>
+
+    <!-- Define logging levels and routing -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="LOKI" />
+    </root>
+
+    <logger name="io.lettuce.core" level="WARN"/>
+</configuration>

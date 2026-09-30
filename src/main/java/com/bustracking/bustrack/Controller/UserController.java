@@ -6,6 +6,7 @@ import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.BusRouteStopDTO;
 import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.entities.*;
+import com.bustracking.bustrack.util.RegNoNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -73,7 +74,7 @@ public class UserController {
 
             if(data != null && !data.isEmpty()){
 
-                String assignedBus = data.get(0).getBusPlateNumber().replace(" ","");
+                String assignedBus = RegNoNormalizer.normalize(data.get(0).getBusPlateNumber());
 
                 String overrideKey = "bus:alternate:" + today + ":" + assignedBus;
 
@@ -177,7 +178,7 @@ public class UserController {
             // CHECK FOR ALTERNATE BUS OVERRIDES
             for (String bus : userBuses) {
 
-                String normalizedBus = bus.replace(" ", "");
+                String normalizedBus = RegNoNormalizer.normalize(bus);
                 String overrideKey = "bus:alternate:" + today + ":" + normalizedBus;
 
                 Set<String> alternates = redisTemplate.opsForSet().members(overrideKey);
@@ -194,7 +195,7 @@ public class UserController {
 
             for (String busNo : busesToFetch) {
 
-                String normalizedKey = busNo.replace(" ", "");
+                String normalizedKey = RegNoNormalizer.normalize(busNo);
                 Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedKey);
 
                 if (rawJson != null) {

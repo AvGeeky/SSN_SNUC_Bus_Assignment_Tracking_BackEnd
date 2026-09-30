@@ -11,10 +11,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final RiderAuthInterceptor riderAuthInterceptor;
+    private final UserStopCacheEvictionInterceptor userStopCacheEvictionInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(adminAuthInterceptor)
+                .addPathPatterns("/admin/**");
+        registry.addInterceptor(userStopCacheEvictionInterceptor)
                 .addPathPatterns("/admin/**");
         registry.addInterceptor(riderAuthInterceptor)
                 .addPathPatterns("/user/**");
