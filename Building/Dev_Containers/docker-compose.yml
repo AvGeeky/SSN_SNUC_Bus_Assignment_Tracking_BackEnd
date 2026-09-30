@@ -3,7 +3,7 @@ services:
   redis:
     build:
       context: redis
-      dockerfile: redis/Dockerfile
+      dockerfile: Dockerfile
       args:
         REDIS_PASSWORD: ${REDIS_PASSWORD}
     container_name: redis-development
@@ -27,14 +27,25 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: bustracking_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_bus:/var/lib/postgresql/data
     restart: always
+    networks:
+      - dev-network
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight_invente
+    restart: always
+    ports:
+      - "5540:5540" # Fixed mapping
+    volumes:
+      - redisinsight_data:/data # Isolated volume
     networks:
       - dev-network
 
 volumes:
   redis_data:
-  postgres_data:
+  postgres_data_bus:
+  redisinsight_data:
 
 networks:
   dev-network:
