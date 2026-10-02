@@ -116,7 +116,7 @@ public class UserController {
     }
 
     @GetMapping("/user/buses")
-    public ResponseEntity<Map<String, Object>> buses(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+    public ResponseEntity<Map<String, Object>> buses(@RequestHeader(value = "Authorization", required = false) String authHeader, @RequestParam (value = "bus", required = false) String optBusNo) {
 
         String jwt = authHeader.substring(7);
         String type = jwtUtil.extractType(jwt);
@@ -143,11 +143,24 @@ public class UserController {
                 Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
                 Map<String, Object> cleanData = new HashMap<>();
 
-                for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
-                    String key = (String) entry.getKey();
-                    String jsonString = (String) entry.getValue();
-                    cleanData.put(key, objectMapper.readTree(jsonString));
+                if (optBusNo!= null && !optBusNo.isEmpty()) {
+                    String normalizedOptBusNo = RegNoNormalizer.normalize(optBusNo);
+                    Object rawJson = redisTemplate.opsForHash().get(REDIS_HASH_KEY, normalizedOptBusNo);
+                    if (rawJson != null) {
+                        cleanData.put(optBusNo, objectMapper.readTree(rawJson.toString()));
+                    } else {
+                        response.put("status", "error");
+                        response.put("message", "No data found for bus: ");
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                    }
+                } else {
+                    for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
+                        String key = (String) entry.getKey();
+                        String jsonString = (String) entry.getValue();
+                        cleanData.put(key, objectMapper.readTree(jsonString));
+                    }
                 }
+
 
                 response.put("status", "success");
                 response.put("message", "All live buses retrieved");
