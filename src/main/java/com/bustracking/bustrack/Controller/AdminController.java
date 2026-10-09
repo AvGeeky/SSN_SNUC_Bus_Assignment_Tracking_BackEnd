@@ -7,6 +7,7 @@ import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.util.RegNoNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
+import java.util.stream.Collectors;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -14,6 +15,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
 
 import java.time.Instant;
 import java.util.*;
@@ -29,11 +33,12 @@ public class AdminController {
     private final VehicleRnoService VehicleRnoService;
     private final BusDataService busDataService;
     private final UserSessionsService sessionsservice;
+    private final NotificationService notificationService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
      @Autowired
-     public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService, UserSessionsService sessionsservice){
+     public AdminController(ObjectMapper objectMapper, StopService StopService, BusService busService, RiderService riderService, ProfileService profileService, VehicleRnoService vehicleRnoService, StringRedisTemplate redisTemplate, BusDataService busDataService, UserSessionsService sessionsservice, NotificationService notificationService){
          this.StopService=StopService;
          this.BusService = busService;
          this.RiderService = riderService;
@@ -43,6 +48,7 @@ public class AdminController {
          this.objectMapper = objectMapper;
          this.busDataService = busDataService;
          this.sessionsservice = sessionsservice;
+         this.notificationService = notificationService;
      }
 
     @GetMapping("/admin/buses")
@@ -670,6 +676,31 @@ public class AdminController {
 
     }
 
+    @GetMapping("/admin/getAllNotifications")
+    public ResponseEntity<Map<String, Object>> getAllNotifications() {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            List<NotificationService.Notification> notifications =
+                    notificationService.getAllNotifications();
+
+            response.put("status", "S");
+            response.put("message", "Notifications retrieved successfully");
+            response.put("data", notifications);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving all notifications", e);
+
+            response.put("status", "E");
+            response.put("message", "Notifications could not be retrieved");
+
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
     @GetMapping("/admin/getAllParentGuestLogins")
     public ResponseEntity<Map<String,Object>> getAllParentGuestLogins(){
         List<User_sessions> mappings= sessionsservice.getAllData();
@@ -1044,6 +1075,198 @@ public class AdminController {
 
             return ResponseEntity.status(500).body(response);
         }
+    }
+
+    @PostMapping("/admin/addNotification")
+    public ResponseEntity<Map<String, Object>> addNotification(
+            @RequestBody Map<String, Object> requestBody) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String htmlNotification =
+                    (String) requestBody.get("htmlNotification");
+
+            Object expiryValue = requestBody.get("toDateEpoch");
+
+            if (htmlNotification == null || htmlNotification.isBlank()
+                    || expiryValue == null) {
+                response.put("status", "E");
+                response.put("message",
+                        "htmlNotification and toDateEpoch are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            long toDateEpoch = Long.parseLong(expiryValue.toString());
+
+            Collection<String> emailsAllowed = null;
+
+            if (requestBody.containsKey("emailsAllowed")
+                    && requestBody.get("emailsAllowed") != null) {
+
+                Object emailValue = requestBody.get("emailsAllowed");
+
+                if (!(emailValue instanceof List<?> emailList)) {
+                    response.put("status", "E");
+                    response.put("message",
+                            "emailsAllowed must be a list of email addresses");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                emailsAllowed = emailList.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toCollection(ArrayList::new));
+            }
+
+            UUID notificationId = notificationService.addNotification(
+                    htmlNotification,
+                    emailsAllowed,
+                    toDateEpoch
+            );
+
+            response.put("status", "S");
+            response.put("message", "Notification added successfully");
+            response.put("data", Map.of(
+                    "notificationId", notificationId.toString(),
+                    "broadcast", emailsAllowed == null,
+                    "toDateEpoch", toDateEpoch
+            ));
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            response.put("status", "E");
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+
+        } catch (Exception e) {
+            log.error("Error adding notification", e);
+            response.put("status", "E");
+            response.put("message", "Notification could not be added");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+
+    @PutMapping("/admin/editNotification/{id}")
+    public ResponseEntity<Map<String, Object>> editNotification(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> requestBody) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            UUID notificationId = UUID.fromString(id);
+
+            String htmlNotification =
+                    (String) requestBody.get("htmlNotification");
+
+            Object expiryValue = requestBody.get("toDateEpoch");
+
+            if (htmlNotification == null || htmlNotification.isBlank()
+                    || expiryValue == null) {
+                response.put("status", "E");
+                response.put("message",
+                        "htmlNotification and toDateEpoch are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            long toDateEpoch = Long.parseLong(expiryValue.toString());
+
+            Collection<String> emailsAllowed = null;
+
+            if (requestBody.containsKey("emailsAllowed")
+                    && requestBody.get("emailsAllowed") != null) {
+
+                Object emailValue = requestBody.get("emailsAllowed");
+
+                if (!(emailValue instanceof List<?> emailList)) {
+                    response.put("status", "E");
+                    response.put("message",
+                            "emailsAllowed must be a list of email addresses");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                emailsAllowed = emailList.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toCollection(ArrayList::new));
+            }
+
+            boolean done = notificationService.editNotification(
+                    notificationId,
+                    htmlNotification,
+                    emailsAllowed,
+                    toDateEpoch
+            );
+
+            if (done) {
+                response.put("status", "S");
+                response.put("message", "Notification updated successfully");
+                response.put("data", Map.of(
+                        "notificationId", id,
+                        "broadcast", emailsAllowed == null,
+                        "toDateEpoch", toDateEpoch
+                ));
+
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "E");
+                response.put("message",
+                        "Notification not found or expiry is invalid");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+        } catch (IllegalArgumentException e) {
+            response.put("status", "E");
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+
+        } catch (Exception e) {
+            log.error("Error editing notification", e);
+            response.put("status", "E");
+            response.put("message", "Notification could not be updated");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
+
+    @DeleteMapping("/admin/removeNotification/{id}")
+    public ResponseEntity<Map<String, Object>> removeNotification(
+            @PathVariable String id) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            UUID notificationId = UUID.fromString(id);
+
+            boolean done =
+                    notificationService.removeNotification(notificationId);
+
+            if (done) {
+                response.put("status", "S");
+                response.put("message", "Notification removed successfully");
+                response.put("data", Map.of("notificationId", id));
+
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "E");
+                response.put("message", "Notification not found");
+
+                return ResponseEntity.status(404).body(response);
+            }
+
+        } catch (IllegalArgumentException e) {
+            response.put("status", "E");
+            response.put("message", "Invalid notification UUID");
+            return ResponseEntity.badRequest().body(response);
+
+        } catch (Exception e) {
+            log.error("Error removing notification", e);
+            response.put("status", "E");
+            response.put("message", "Notification could not be removed");
+            return ResponseEntity.status(503).body(response);
+        }
+
     }
 
 }
