@@ -8,6 +8,8 @@ import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.util.RegNoNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import java.util.*;
 @RestController
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final RiderService riderService;
     private final JwtUtil jwtUtil;
@@ -30,8 +33,9 @@ public class UserController {
     private static final String REDIS_HASH_KEY = "LIVE_BUS_LOCATIONS";
     private final VehicleRnoService vehicleRnoService;
     private final UserSessionsService sessionService;
+    private final NotificationService notificationService;
     @Autowired
-     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper, VehicleRnoService vehicleRnoService, UserSessionsService sessionService){
+     public UserController(RiderService riderService, JwtUtil jwtUtil, BusDataService busDataService, StringRedisTemplate redisTemplate, ObjectMapper objectMapper, VehicleRnoService vehicleRnoService, UserSessionsService sessionService, NotificationService notificationService){
         this.riderService = riderService;
         this.jwtUtil = jwtUtil;
         this.busDataService = busDataService;
@@ -40,6 +44,7 @@ public class UserController {
         this.vehicleRnoService = vehicleRnoService;
 
         this.sessionService = sessionService;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/user/findUserRouteById")
@@ -163,7 +168,7 @@ public class UserController {
 
 
                 response.put("status", "success");
-                response.put("message", "All live buses retrieved");
+                response.put("type", "GLOBALMODE");
                 response.put("data", cleanData);
 
 
@@ -228,6 +233,9 @@ public class UserController {
 
                 response.put("status", "success");
                 response.put("data", busesData);
+                if (busesData.size()>1){
+                    response.put("type", "GLOBALMODE");
+                }
                 return ResponseEntity.ok(response);
             }
 
@@ -328,6 +336,38 @@ public class UserController {
             response.put("status","E");
             response.put("message","data not retrieved successfully");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
+
+
+    @GetMapping("/user/getMyNotifications")
+    public ResponseEntity<Map<String, Object>> getMyNotifications(@RequestHeader("Authorization") String authHeader) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String jwt = authHeader.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+
+            List<NotificationService.Notification> notifications =
+                    notificationService.getNotifications(email);
+
+            response.put("status", "S");
+            response.put("message", "Notifications retrieved successfully");
+            response.put("data", notifications);
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            response.put("status", "E");
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving notifications", e);
+            response.put("status", "E");
+            response.put("message", "Notifications could not be retrieved");
+            return ResponseEntity.status(503).body(response);
         }
     }
 

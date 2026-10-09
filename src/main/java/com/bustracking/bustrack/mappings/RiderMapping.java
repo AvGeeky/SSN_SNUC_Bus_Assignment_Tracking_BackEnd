@@ -14,7 +14,7 @@ public interface RiderMapping {
   @Select("select * from riders")
     List<Rider>  getAll();
 
-  @Insert("insert into riders(id,name,year,department,home_stop_id,created_at,college,email,digital_id)values(#{id},#{name},#{year},#{department},#{homeStopId},#{createdAt},#{college},#{email},#{digitalId})")
+  @Insert("insert into riders(id,name,year,department,home_stop_id,created_at,college,email,digital_id)values(#{id},#{name},#{year},#{department},#{homeStopId},#{createdAt},#{college},#{email},#{digitalId}) ON CONFLICT (email) DO NOTHING")
   int insert_rider(Rider rider);
 
   @Update("update riders set name=#{name},year=#{year},department=#{department},home_stop_id=#{homeStopId},created_at=#{createdAt},college=#{college},email=#{email},digital_id=#{digitalId} where id=#{id}")
