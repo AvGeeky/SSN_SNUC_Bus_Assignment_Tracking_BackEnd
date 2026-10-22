@@ -46,9 +46,20 @@ public class ProfileService {
     private final Map<String, String> ROUTE_TO_BUS_NUMBER_MAP = new HashMap<>();
     @PostConstruct
     private void initMap() {
+        refreshRouteMap();
+    }
+
+    /**
+     * Reloads the route -> bus number map from the database.
+     * Called at start-up AND before every Excel profile import, so route / bus changes made in the
+     * admin panel are picked up without restarting the application.
+     */
+    private synchronized void refreshRouteMap() {
         List<Vehicle_rno_mapping> list = vehiclernoMapper.getAll();
+        ROUTE_TO_BUS_NUMBER_MAP.clear();
         for (Vehicle_rno_mapping item : list) {
-            ROUTE_TO_BUS_NUMBER_MAP.put(item.getRouteNo(), item.getVehicleNo());
+            if (item.getRouteNo() == null) continue;
+            ROUTE_TO_BUS_NUMBER_MAP.put(item.getRouteNo().trim(), item.getVehicleNo());
         }
     }
 
@@ -277,6 +288,8 @@ public class ProfileService {
     }
     @Transactional(rollbackFor = Exception.class)
     public void create_full_profile_from_excel(MultipartFile file, String profileName, String profileStatus) throws Exception {
+
+        refreshRouteMap();
 
         ProfileRequest profileRequest = new ProfileRequest();
 

@@ -52,8 +52,8 @@ public class NeoTrackService {
     // The API is asked for the points between "from" and "to". "from" is the end of the last successful call for that bus
     // (minus a small overlap), so nothing is missed however long the sleep or an outage was.
     private static final long MAX_LOOKBACK_MS = 23L * 60 * 60 * 1000;
-    private static final long MIN_WINDOW_MS = 40_000;
-    private static final long WINDOW_OVERLAP_MS = 10_000;
+
+    private static final long WINDOW_OVERLAP_MS = 15_000;
 
     // Schedule Config
     private static final LocalTime MORNING_START = LocalTime.of(5, 30);
@@ -204,7 +204,6 @@ public class NeoTrackService {
     /**
      * Start of the time window to request for a bus.
      * Normally the end of the previous successful call. After a restart, the time of the bus's last known point in Redis.
-     * Never shorter than MIN_WINDOW_MS and never longer than MAX_LOOKBACK_MS.
      */
     private long windowStart(String regNo, long now) {
         long oldest = now - MAX_LOOKBACK_MS;
@@ -216,7 +215,7 @@ public class NeoTrackService {
         if (since == null) {
             return oldest;
         }
-        long from = Math.min(since - WINDOW_OVERLAP_MS, now - MIN_WINDOW_MS);
+        long from = since - WINDOW_OVERLAP_MS;
         return Math.max(from, oldest);
     }
 
