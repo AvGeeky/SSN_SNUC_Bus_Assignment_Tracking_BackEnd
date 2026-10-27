@@ -40,6 +40,5 @@ build/
 application.yml
 
 application-*.yml
-/Building/Docker-BusApp/
-/Building/Docker-Cradle/
+/Building/
 
