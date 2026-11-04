@@ -168,7 +168,7 @@ public class AuthController {
         claims.put("type", "guest");
         claims.put("role", "rider");
 
-        String token = jwtUtil.generateToken(username, claims);
+        String token = jwtUtil.generateTokenForGuests(username, claims);
 
         response.put("status", "S");
         response.put("token", token);

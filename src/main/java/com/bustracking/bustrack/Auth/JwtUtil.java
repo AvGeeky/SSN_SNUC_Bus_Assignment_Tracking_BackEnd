@@ -19,6 +19,7 @@ public class JwtUtil {
     private final String secretKey = System.getenv("JWT_HMAC_SECRET");
     //private final long expiration = 30 * 86400000; // 30 days
     private final long expiration = 30L * 24L * 60L * 60L * 1000L; // 30 days in milliseconds
+    private final long expirationGuests =  60L * 60L * 1000L; // 1 hour in milliseconds
 
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -49,12 +50,26 @@ public class JwtUtil {
         return createToken(claims, email);
     }
 
+    public String generateTokenForGuests(String email, Map<String, Object> claims) {
+        return createTokenForGuests(claims, email);
+    }
+
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private String createTokenForGuests(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationGuests))
                 .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), SignatureAlgorithm.HS256)
                 .compact();
     }
