@@ -294,9 +294,8 @@ public class BusDataService {
         try {
             String response = restTemplate.postForObject(urlNMTLogin, null, String.class);
             JsonNode root = objectMapper.readTree(response);
-
-            String token = root.path("data").path("token").asText();
-            if (root.path("success").asBoolean() && !token.isBlank()) {
+            String token = root.path("access_token").asText();
+            if (!token.isBlank()) {
                 log.info("NMT scheduled Login Successful. Token retrieved.");
                 redisTemplate.opsForValue().set(NMT_TOKEN_KEY, token, Duration.ofDays(7));
                 return true;
