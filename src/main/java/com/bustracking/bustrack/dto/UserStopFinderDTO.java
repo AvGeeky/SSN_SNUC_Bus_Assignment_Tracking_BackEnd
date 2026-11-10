@@ -2,6 +2,7 @@ package com.bustracking.bustrack.dto;
 
 import lombok.Data;
 
+import java.time.LocalTime;
 import java.util.UUID;
 @Data
 public class UserStopFinderDTO {
@@ -19,4 +20,5 @@ public class UserStopFinderDTO {
     private String busBrand;
     private int busMaxCapacity;
     private String busPlateNumber;
+    private String loginTime;
 }

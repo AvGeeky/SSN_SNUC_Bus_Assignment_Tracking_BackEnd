@@ -156,7 +156,7 @@ public class BusDataService {
 
     public FetchResult fetchAndPublishApiNMT() {
         return runFetch("API NMT", NMT_TOKEN_KEY, () -> {
-            String bearerToken = getOrRefreshToken();
+            String bearerToken = getOrRefreshNMTToken();
             if (bearerToken == null) {
                 throw new IllegalStateException("no NMT auth token available");
             }
@@ -297,7 +297,7 @@ public class BusDataService {
             String token = root.path("access_token").asText();
             if (!token.isBlank()) {
                 log.info("NMT scheduled Login Successful. Token retrieved.");
-                redisTemplate.opsForValue().set(NMT_TOKEN_KEY, token, Duration.ofDays(7));
+                redisTemplate.opsForValue().set(NMT_TOKEN_KEY, token, Duration.ofMinutes(470));
                 return true;
             } else {
                 log.error("Login failed based on API response: {}", response);
@@ -309,7 +309,7 @@ public class BusDataService {
         }
     }
 
-    private String getOrRefreshToken() {
+    private String getOrRefreshNMTToken() {
         String token = redisTemplate.opsForValue().get(NMT_TOKEN_KEY);
 
         // Lazy-load: if token is null, try to login right now
@@ -339,8 +339,8 @@ public class BusDataService {
 
             if (root.hasNonNull("access_token")) {
                 String token = root.get("access_token").asText();
-                redisTemplate.opsForValue().set(TATA_TOKEN_KEY, token, Duration.ofMinutes(3500));
-                log.info("API 4 Login Successful. Token saved with 3500m TTL.");
+                redisTemplate.opsForValue().set(TATA_TOKEN_KEY, token, Duration.ofSeconds(3550));
+                log.info("API 4 Login Successful. Token saved with 3550s TTL.");
                 return true;
             } else {
                 log.error("API 4 Login failed: {}", response);

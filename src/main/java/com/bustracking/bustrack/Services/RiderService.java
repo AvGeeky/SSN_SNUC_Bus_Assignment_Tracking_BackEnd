@@ -17,10 +17,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -98,6 +96,11 @@ public class RiderService {
         }
 
         List<UserStopFinderDTO> result = stopFinderMapper.getUserStopDetails(riderId);
+        for (UserStopFinderDTO dto : result) {
+
+            dto.setLoginTime(String.valueOf(LocalTime.now()));
+
+        }
         try {
             long ttl = USER_STOP_TTL_SECONDS + ThreadLocalRandom.current().nextLong(0, USER_STOP_TTL_JITTER_SECONDS + 1);
             // set() overwrites, so a forced refresh needs no separate delete (and never leaves a gap with no entry)
@@ -131,6 +134,63 @@ public class RiderService {
         } catch (Exception e) {
             log.warn("Could not evict user stop cache: {}", e.getMessage());
         }
+    }
+
+
+    public List<UserStopFinderDTO> getLoggedInUsers() {
+
+        Set<String> keys = redisTemplate.execute(
+                (RedisCallback<Set<String>>) connection -> {
+
+                    Set<String> found = new java.util.LinkedHashSet<>();
+
+                    ScanOptions options = ScanOptions.scanOptions()
+                            .match(USER_STOP_KEY_PREFIX + "*")
+                            .count(500)
+                            .build();
+
+                    try (Cursor<byte[]> cursor =
+                                 connection.keyCommands().scan(options)) {
+
+                        while (cursor.hasNext()) {
+                            found.add(new String(
+                                    cursor.next(),
+                                    java.nio.charset.StandardCharsets.UTF_8
+                            ));
+                        }
+                    }
+
+                    return found;
+                }
+        );
+
+        List<UserStopFinderDTO> allUsers = new ArrayList<>();
+
+        if (keys == null || keys.isEmpty()) {
+            return allUsers;
+        }
+
+        for (String key : keys) {
+            try {
+                String cached = redisTemplate.opsForValue().get(key);
+
+                if (cached == null) continue;
+
+                List<UserStopFinderDTO> details =
+                        objectMapper.readValue(
+                                cached,
+                                new TypeReference<List<UserStopFinderDTO>>() {}
+                        );
+
+                allUsers.addAll(details);
+
+            } catch (Exception e) {
+                log.warn("Could not read user stop details for {}: {}",
+                        key, e.getMessage());
+            }
+        }
+
+        return allUsers;
     }
 
 }

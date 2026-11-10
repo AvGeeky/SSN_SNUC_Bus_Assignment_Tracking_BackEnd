@@ -3,6 +3,7 @@ import com.bustracking.bustrack.Services.*;
 import com.bustracking.bustrack.Services.GPSService.BusDataService;
 import com.bustracking.bustrack.dto.ProfileRequest;
 import com.bustracking.bustrack.dto.ProfileResponse;
+import com.bustracking.bustrack.dto.UserStopFinderDTO;
 import com.bustracking.bustrack.entities.*;
 import com.bustracking.bustrack.util.RegNoNormalizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -212,6 +213,25 @@ public class AdminController {
          }
 
      }
+
+    @GetMapping("/admin/getLoggedInUsers")
+    public ResponseEntity<Map<String,Object>> getLoggedInUsers(){
+        List<UserStopFinderDTO> users=RiderService.getLoggedInUsers();
+        Map<String, Object> response = new HashMap<>();
+        if(users!=null) {
+
+            response.put("status", "S");
+            response.put("message","records retrieved successfully");
+            response.put("data", users);
+            return ResponseEntity.ok(response);
+        }
+        else{
+            response.put("status","E");
+            response.put("message","records not retrieved successfully");
+            return ResponseEntity.status(503).body(response);
+        }
+    }
+
     @GetMapping("/admin/getAllBus")
     public ResponseEntity<Map<String,Object>> getAllBuses(){
         List<Bus> buses=BusService.getAll();
