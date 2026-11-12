@@ -145,7 +145,7 @@ public class UserController {
             // GLOBAL VIEW CONDITIONS
             if (busDataService.getAdminGlobalSwitch() || type.equalsIgnoreCase("guest") || isExamDayAndTime) {
 
-                Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
+
                 Map<String, Object> cleanData = new HashMap<>();
 
                 if (optBusNo!= null && !optBusNo.isEmpty()) {
@@ -155,10 +155,11 @@ public class UserController {
                         cleanData.put(optBusNo, objectMapper.readTree(rawJson.toString()));
                     } else {
                         response.put("status", "error");
-                        response.put("message", "No data found for bus: ");
+                        response.put("message", "No data found for bus. ");
                         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
                     }
                 } else {
+                    Map<Object, Object> rawData = redisTemplate.opsForHash().entries(REDIS_HASH_KEY);
                     for (Map.Entry<Object, Object> entry : rawData.entrySet()) {
                         String key = (String) entry.getKey();
                         String jsonString = (String) entry.getValue();

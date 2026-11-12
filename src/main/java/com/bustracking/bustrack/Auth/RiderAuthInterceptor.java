@@ -70,7 +70,9 @@ public class RiderAuthInterceptor implements HandlerInterceptor {
                 return true;
             }
         } catch (ExpiredJwtException e) {
-            log.error("JWT token has expired: {}", e.getMessage());
+            Claims claims = e.getClaims();
+            String email = claims.getSubject();
+            log.warn("JWT token has expired: {} for {}", e.getMessage(),email);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has expired");
             return false;
         } catch (JwtException e) {
